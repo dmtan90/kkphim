@@ -7,6 +7,7 @@ app.use(cors());
 
 const API_BASE = 'https://phimapi.com';
 const APP_HOST = 'https://kkphim.agrhub.com';
+const APP_PORT = 3005;
 
 // Utilities
 const getPosterUrl = (path) => {
@@ -499,7 +500,7 @@ app.get('/list', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 3005;
+const PORT = process.env.PORT || APP_PORT;
 app.listen(PORT, () => {
     console.log(`MonPlayer API Proxy is running on port ${PORT}`);
 });
