@@ -356,8 +356,8 @@ app.get('/detail', async (req, res) => {
             if (server.server_data) {
                 server.server_data.forEach(ep => {
                     streams.push({
-                        id: ep.slug,
-                        name: `${server.server_name} - ${ep.name}`,
+                        id: `${server.server_name}-${ep.slug}`,
+                        name: ep.name,
                         image: {
                             url: getPosterUrl(movie.thumb_url || movie.poster_url),
                             type: "contain",
