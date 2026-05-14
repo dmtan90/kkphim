@@ -61,12 +61,16 @@ const fetchList = async (url) => {
 // 1. GET / (Home)
 app.get('/', async (req, res) => {
     try {
-        const [phimMoi, phimBo, phimLe, hoatHinh, tvShows] = await Promise.all([
+        const [phimMoi, phimBo, phimLe, hoatHinh, tvShows, phimVietsub, phimLongTieng, phimThuyetMinh] = await Promise.all([
             fetchList(`${API_BASE}/danh-sach/phim-moi-cap-nhat?page=1`),
             fetchList(`${API_BASE}/v1/api/danh-sach/phim-bo?page=1`),
             fetchList(`${API_BASE}/v1/api/danh-sach/phim-le?page=1`),
             fetchList(`${API_BASE}/v1/api/danh-sach/hoat-hinh?page=1`),
             fetchList(`${API_BASE}/v1/api/danh-sach/tv-shows?page=1`),
+            fetchList(`${API_BASE}/v1/api/danh-sach/phim-vietsub?page=1`),
+            fetchList(`${API_BASE}/v1/api/danh-sach/phim-long-tieng?page=1`),
+            fetchList(`${API_BASE}/v1/api/danh-sach/phim-thuyet-minh?page=1`)
+            
         ]);
         
         const response = {
@@ -84,7 +88,7 @@ app.get('/', async (req, res) => {
             notice: {
                 id: "notice",
                 link: "https://phimapi.com",
-                text: "API được cung cấp bởi KKPhim",
+                text: "Info",
                 icon: "https://kkphim.vip/assets/img/logo-2.png",
                 closeable: true
             },
@@ -276,6 +280,15 @@ app.get('/', async (req, res) => {
                     { text: "1896", type: "radio", url: `${APP_HOST}/list?year=1896` },
                     { text: "1895", type: "radio", url: `${APP_HOST}/list?year=1895` },
                 ] },
+                { type: "dropdown", text: "Phân loại", value: [
+                    { text: "Phim bộ", type: "radio", url: `${APP_HOST}/list?type=phim-bo` },
+                    { text: "Phim lẻ", type: "radio", url: `${APP_HOST}/list?type=phim-le` },
+                    { text: "TV Shows", type: "radio", url: `${APP_HOST}/list?type=tv-shows` },
+                    { text: "Hoạt hình", type: "radio", url: `${APP_HOST}/list?type=hoat-hinh` },
+                    { text: "Phim Vietsub", type: "radio", url: `${APP_HOST}/list?type=phim-vietsub` },
+                    { text: "Phim Thuyết Minh", type: "radio", url: `${APP_HOST}/list?type=phim-thuyet-minh` },
+                    { text: "Phim Lồng Tiếng", type: "radio", url: `${APP_HOST}/list?type=phim-long-tieng` },
+                ] },
             ],
             grid_number: 1,
             groups: [],
@@ -307,6 +320,9 @@ app.get('/', async (req, res) => {
         addGroup("phim-le", "Phim Lẻ", "horizontal", phimLe.items);
         addGroup("hoat-hinh", "Hoạt Hình", "horizontal", hoatHinh.items);
         addGroup("tv-shows", "TV Shows", "horizontal", tvShows.items);
+        addGroup("phim-vietsub", "Phim Vietsub", "horizontal", phimVietsub.items);
+        addGroup("phim-thuyet-minh", "Phim Thuyết Minh", "horizontal", phimThuyetMinh.items);
+        addGroup("phim-long-tieng", "Phim Lồng Tiếng", "horizontal", phimLongTieng.items);
 
         res.json(response);
     } catch (error) {
@@ -381,21 +397,21 @@ app.get('/search', async (req, res) => {
     const page = req.query.page || 1;
     const sortType = req.query.sort_type || 'desc';
     const sortField = req.query.sort_field || 'modified.time';
-    const host = `${req.protocol}://${req.get('host')}`;
 
     try {
         const { items, pagination }  = await fetchList(`${API_BASE}/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&limit=${limit}&page=${page}&sort_field=${sortField}&sort_type=${sortType}`);
         
         res.json({
-            id: "search-results",
-            name: `Kết quả tìm kiếm cho: ${keyword}`,
+            grid_number: 3,
             groups: [
                 {
-                    id: "search-results-group",
-                    name: "Kết Quả Tìm Kiếm",
-                    display: "grid",
-                    channels: items.map(item => formatChannel(item, req))
-                }
+                    id: "near-matches",
+                    name: `Kết quả tìm kiếm: ${keyword} (${pagination.totalItems ?? 0})`,
+                    display: "vertical",
+                    enable_detail: true,
+                    grid_number: 3,
+                    channels: items.map(item => formatChannel(item, req)),
+                }                
             ],
             load_more: {
                 remote_data: {
@@ -443,17 +459,21 @@ app.get('/list', async (req, res) => {
     const year = req.query.year;
     const sortField = req.query.sort_field || 'modified.time';
     const sortType = req.query.sort_type || 'desc';
-    const host = `${req.protocol}://${req.get('host')}`;
+
     try {
         let url = `${API_BASE}/v1/api/danh-sach/${type}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+        let remote_url = `${API_BASE}/v1/api/danh-sach/${type}?sort_field=${sortField}&sort_type=${sortType}`;
         if(country && !type){
             url = `${API_BASE}/v1/api/quoc-gia/${country}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+            remote_url = `${API_BASE}/v1/api/quoc-gia/${country}?sort_field=${sortField}&sort_type=${sortType}`;
         }
         else if(category && !type){
             url = `${API_BASE}/v1/api/the-loai/${category}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+            remote_url = `${API_BASE}/v1/api/the-loai/${category}?sort_field=${sortField}&sort_type=${sortType}`;
         }
         else if(year && !type){
             url = `${API_BASE}/v1/api/nam/${year}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+            remote_url = `${API_BASE}/v1/api/nam/${year}?sort_field=${sortField}&sort_type=${sortType}`;
         }
         else{
             if(!type){
@@ -463,24 +483,17 @@ app.get('/list', async (req, res) => {
             if (category) url += `&category=${category}`;
             if (country) url += `&country=${country}`;
             if (year) url += `&year=${year}`;
+            remote_url = `${API_BASE}/v1/api/danh-sach/${type}?sort_field=${sortField}&sort_type=${sortType}`;
         }
 
         const { items, pagination } = await fetchList(url);
 
         res.json({
-            id: `list-${type}`,
-            name: `Danh Sách Phim`,
-            groups: [
-                {
-                    id: `group-${type}`,
-                    name: `Kết Quả Lọc`,
-                    display: "grid",
-                    channels: items.map(item => formatChannel(item, req))
-                }
-            ],
+            grid_number: 3,
+            channels: items.map(item => formatChannel(item, req)),
             load_more: {
                 remote_data: {
-                    url: `${url}`
+                    url: `${remote_url}`
                 },
                 pageInfo: {
                     current_page: pagination.currentPage,
