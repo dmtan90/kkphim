@@ -456,7 +456,7 @@ app.get('/search', async (req, res) => {
     const limit = req.query.limit || 24;
     const page = req.query.page || 1;
     const sortType = req.query.sort_type || 'desc';
-    const sortField = req.query.sort_field || 'modified.time';
+    const sortField = req.query.sort_field || '_id';
 
     try {
         const { items, pagination }  = await fetchList(`${API_BASE}/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&limit=${limit}&page=${page}&sort_field=${sortField}&sort_type=${sortType}`);
@@ -517,30 +517,30 @@ app.get('/list', async (req, res) => {
     const category = req.query.category;
     const country = req.query.country;
     const year = req.query.year;
-    const sortField = req.query.sort_field || 'modified.time';
+    const sortField = req.query.sort_field || '_id';
     const sortType = req.query.sort_type || 'desc';
 
     try {
         let url = `${API_BASE}/v1/api/danh-sach/${type}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-        let remote_url = `${API_HOST}/list?type=${type}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+        let remote_url = `${APP_HOST}/list?type=${type}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
         if(country && !type){
             url = `${API_BASE}/v1/api/quoc-gia/${country}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            remote_url = `${API_HOST}/list?country=${country}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+            remote_url = `${APP_HOST}/list?country=${country}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
         }
         else if(category && !type){
             url = `${API_BASE}/v1/api/the-loai/${category}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            remote_url = `${API_HOST}/list?category=${category}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+            remote_url = `${APP_HOST}/list?category=${category}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
         }
         else if(year && !type){
             url = `${API_BASE}/v1/api/nam/${year}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            remote_url = `${API_HOST}/list?year=${year}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+            remote_url = `${APP_HOST}/list?year=${year}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
         }
         else{
             if(!type){
                 type = "phim-moi-cap-nhat-v3";
             }
             url = `${API_BASE}/v1/api/danh-sach/${type}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            remote_url = `${API_HOST}/list?type=${type}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+            remote_url = `${APP_HOST}/list?type=${type}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
             if (category){
                 url += `&category=${category}`;
                 remote_url += `&category=${category}`;
