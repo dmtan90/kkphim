@@ -23,13 +23,17 @@ const formatChannel = (item, req) => {
         description: item.name,
         type: "playlist",
         display: "text-below",
+        enable_detail: true,
         image: {
             url: getPosterUrl(item.thumb_url || item.poster_url),
             type: "cover",
-            width: 800,
-            height: 400
+            width: 640,
+            height: 480
         },
         remote_data: {
+            url: `${APP_HOST}/detail?slug=${item.slug}`
+        },
+        share: {
             url: `${APP_HOST}/detail?slug=${item.slug}`
         }
     };
@@ -356,8 +360,8 @@ app.get('/detail', async (req, res) => {
                         image: {
                             url: getPosterUrl(movie.thumb_url || movie.poster_url),
                             type: "contain",
-                            width: 129,
-                            height: 73
+                            width: 128,
+                            height: 72
                         },
                         remote_data: {
                             url: ep.link_m3u8 || ep.link_embed
@@ -406,7 +410,7 @@ app.get('/search', async (req, res) => {
             groups: [
                 {
                     id: "near-matches",
-                    name: `Kết quả tìm kiếm: ${keyword} (${pagination.totalItems ?? 0})`,
+                    name: `Kết quả tìm kiếm: ${keyword} (${pagination?.totalItems ?? 0})`,
                     display: "vertical",
                     enable_detail: true,
                     grid_number: 3,
@@ -490,6 +494,7 @@ app.get('/list', async (req, res) => {
 
         res.json({
             grid_number: 3,
+            enable_detail: true,
             channels: items.map(item => formatChannel(item, req)),
             load_more: {
                 remote_data: {
