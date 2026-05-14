@@ -522,28 +522,37 @@ app.get('/list', async (req, res) => {
 
     try {
         let url = `${API_BASE}/v1/api/danh-sach/${type}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-        let remote_url = `${API_BASE}/v1/api/danh-sach/${type}?sort_field=${sortField}&sort_type=${sortType}`;
+        let remote_url = `${API_HOST}/list?type=${type}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
         if(country && !type){
             url = `${API_BASE}/v1/api/quoc-gia/${country}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            remote_url = `${API_BASE}/v1/api/quoc-gia/${country}?sort_field=${sortField}&sort_type=${sortType}`;
+            remote_url = `${API_HOST}/list?country=${country}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
         }
         else if(category && !type){
             url = `${API_BASE}/v1/api/the-loai/${category}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            remote_url = `${API_BASE}/v1/api/the-loai/${category}?sort_field=${sortField}&sort_type=${sortType}`;
+            remote_url = `${API_HOST}/list?category=${category}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
         }
         else if(year && !type){
             url = `${API_BASE}/v1/api/nam/${year}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            remote_url = `${API_BASE}/v1/api/nam/${year}?sort_field=${sortField}&sort_type=${sortType}`;
+            remote_url = `${API_HOST}/list?year=${year}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
         }
         else{
             if(!type){
                 type = "phim-moi-cap-nhat-v3";
             }
             url = `${API_BASE}/v1/api/danh-sach/${type}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            if (category) url += `&category=${category}`;
-            if (country) url += `&country=${country}`;
-            if (year) url += `&year=${year}`;
-            remote_url = `${API_BASE}/v1/api/danh-sach/${type}?sort_field=${sortField}&sort_type=${sortType}`;
+            remote_url = `${API_HOST}/list?type=${type}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+            if (category){
+                url += `&category=${category}`;
+                remote_url += `&category=${category}`;
+            } 
+            if (country){
+                url += `&country=${country}`;
+                remote_url += `&country=${country}`;
+            } 
+            if (year){
+                url += `&year=${year}`;
+                remote_url += `&year=${year}`;
+            } 
         }
 
         const { items, pagination } = await fetchList(url);
@@ -554,7 +563,7 @@ app.get('/list', async (req, res) => {
             channels: items.map(item => formatChannel(item, req)),
             load_more: {
                 remote_data: {
-                    url: `${remote_url}`
+                    url: remote_url
                 },
                 pageInfo: {
                     current_page: pagination.currentPage,
