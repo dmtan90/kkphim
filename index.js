@@ -350,8 +350,9 @@ app.get('/detail', async (req, res) => {
         const movie = data.movie;
         const episodes = data.episodes || [];
 
-        const streams = [];
+        const contents = [];
         episodes.forEach(server => {
+            const streams = [];
             if (server.server_data) {
                 server.server_data.forEach(ep => {
                     streams.push({
@@ -364,9 +365,16 @@ app.get('/detail', async (req, res) => {
                             height: 72
                         },
                         remote_data: {
-                            url: ep.link_m3u8 || ep.link_embed
+                            url: `${APP_HOST}/stream?slug=${slug}&server=${encodeURIComponent(server.server_name)}&ep=${ep.slug}`
                         }
                     });
+                });
+
+                contents.push({
+                    id: movie._id || movie.slug,
+                    name: server.server_name,
+                    grid_number: 3,
+                    streams: streams
                 });
             }
         });
@@ -376,20 +384,68 @@ app.get('/detail', async (req, res) => {
                 {
                     id: movie._id || movie.slug,
                     name: movie.name,
-                    contents: [
-                        {
-                            id: movie._id || movie.slug,
-                            name: movie.name,
-                            grid_number: 3,
-                            streams: streams
-                        }
-                    ]
+                    contents: contents
                 }
             ]
         });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+app.get('/stream', async (req, res) => {
+    const slug = req.query.slug;
+    const server = req.query.server;
+    const ep = req.query.ep;
+    const start_time = req.query.start_time || 0;
+    
+    if (!slug) return res.status(400).json({ error: "Missing slug parameter" });
+    if (!server) return res.status(400).json({ error: "Missing server parameter" });
+    if (!ep) return res.status(400).json({ error: "Missing episode parameter" });
+
+    try {
+        const response = await axios.get(`${API_BASE}/phim/${slug}`);
+        const data = response.data;
+        if (!data.status) {
+             return res.status(404).json({ error: "Movie not found" });
+        }
+
+        const movie = data.movie;
+        const episodes = data.episodes || [];
+        let id = "";
+        let name = "";
+        let stream_url = "";
+        let stream_type = "hls";
+        for(let i = 0; i < episodes.length; i++){
+            let item = episodes[i];
+            if(item.server_data?.length > 0 && item.server_name == server){
+                for(let j = 0; j < item.server_data.length; j++){
+                    let epItem = item.server_data[j];
+                    if(epItem.slug == ep){
+                        id = epItem.slug;
+                        name = epItem.name;
+                        stream_url = epItem.link_m3u8 || epItem.link_embed;
+                        stream_type = epItem.link_m3u8 ? "hls" : "webview";
+                        break;
+                    }
+                }
+            }
+        }
+        
+        res.json({
+            stream_links: [{
+                id: id,
+                name: name,
+                url: stream_url,
+                type: stream_type,
+                start_time: Number.parseInt(start_time),
+                default: true
+            }]
+        });
+    } catch (error) {
+         console.error(error);
+         res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
