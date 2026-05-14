@@ -371,7 +371,7 @@ app.get('/detail', async (req, res) => {
                 });
 
                 contents.push({
-                    id: movie._id || movie.slug,
+                    id: `${movie._id || movie.slug}-${server.server_name}`,
                     name: server.server_name,
                     grid_number: 3,
                     streams: streams
