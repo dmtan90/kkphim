@@ -16,7 +16,13 @@ const getPosterUrl = (path) => {
     return `https://phimapi.com/image.php?url=https://phimimg.com/${path}`;
 };
 
-const formatChannel = (item, req) => {
+const formatChannel = (item, landscape = true, req) => {
+    let width = landscape ? 480 : 640;
+    let height = landscape ? 640 : 480;
+    let poster_url = item.poster_url || item.thumb_url;//thumb_url=16:9; poster_url=9:16
+    if (landscape) {
+        poster_url = item.thumb_url || item.poster_url;
+    }
     return {
         id: item.slug,
         name: item.name,
@@ -25,10 +31,10 @@ const formatChannel = (item, req) => {
         display: "text-below",
         enable_detail: true,
         image: {
-            url: getPosterUrl(item.thumb_url || item.poster_url),
+            url: getPosterUrl(poster_url),
             type: "cover",
-            width: 640,
-            height: 480
+            width: width,
+            height: height
         },
         remote_data: {
             url: `${APP_HOST}/detail?slug=${item.slug}`
@@ -311,7 +317,7 @@ app.get('/', async (req, res) => {
                     display: display,
                     enable_detail: true,
                     grid_number: 1,
-                    channels: items.map(item => formatChannel(item, req)),
+                    channels: items.map(item => formatChannel(item, true, req)),
                     remote_data: {
                         url: `${APP_HOST}/list?type=${id}`
                     }
@@ -358,12 +364,12 @@ app.get('/detail', async (req, res) => {
                     streams.push({
                         id: `${server.server_name}-${ep.slug}`,
                         name: ep.name,
-                        image: {
-                            url: getPosterUrl(movie.thumb_url || movie.poster_url),
-                            type: "contain",
-                            width: 128,
-                            height: 72
-                        },
+                        // image: {
+                        //     url: getPosterUrl(movie.thumb_url || movie.poster_url),
+                        //     type: "contain",
+                        //     width: 128,
+                        //     height: 72
+                        // },
                         remote_data: {
                             url: `${APP_HOST}/stream?slug=${slug}&server=${encodeURIComponent(server.server_name)}&ep=${ep.slug}`
                         }
@@ -440,7 +446,7 @@ app.get('/stream', async (req, res) => {
                 url: stream_url,
                 type: stream_type,
                 start_time: Number.parseInt(start_time),
-                default: true
+                default: false
             }]
         });
     } catch (error) {
@@ -470,8 +476,8 @@ app.get('/search', async (req, res) => {
                     display: "vertical",
                     enable_detail: true,
                     grid_number: 3,
-                    channels: items.map(item => formatChannel(item, req)),
-                }                
+                    channels: items.map(item => formatChannel(item, false, req)),
+                }
             ],
             load_more: {
                 remote_data: {
@@ -560,7 +566,7 @@ app.get('/list', async (req, res) => {
         res.json({
             grid_number: 3,
             enable_detail: true,
-            channels: items.map(item => formatChannel(item, req)),
+            channels: items.map(item => formatChannel(item, false, req)),
             load_more: {
                 remote_data: {
                     url: remote_url
