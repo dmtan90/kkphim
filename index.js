@@ -17,8 +17,8 @@ const getPosterUrl = (path) => {
 };
 
 const formatChannel = (item, landscape = true, req) => {
-    let width = landscape ? 480 : 640;
-    let height = landscape ? 640 : 480;
+    let width = landscape ? 640 : 480;
+    let height = landscape ? 480 : 640;
     let poster_url = item.poster_url || item.thumb_url;//thumb_url=16:9; poster_url=9:16
     if (landscape) {
         poster_url = item.thumb_url || item.poster_url;
@@ -26,7 +26,8 @@ const formatChannel = (item, landscape = true, req) => {
     return {
         id: item.slug,
         name: item.name,
-        description: item.name,
+        subtitle: item.origin_name,
+        description: item.content || item.origin_name || item.name,
         type: "playlist",
         display: "text-below",
         enable_detail: true,
@@ -44,6 +45,36 @@ const formatChannel = (item, landscape = true, req) => {
         }
     };
 };
+
+function getDescription(movie) {
+  const { description, content, lang } = movie;
+
+  // 1. Ưu tiên content (nếu là tiếng Việt - là nội dung chính)
+  if (content) {
+    return content;
+  }
+
+  // 2. Nếu content rỗng, dùng description
+  if (description) {
+    return description;
+  }
+
+  // 3. Fallback: tự động tạo từ info
+  const country = lang?.country
+    ? (typeof lang.country === 'string'
+        ? lang.country
+        : Array.isArray(lang.country)
+        ? lang.country[0]
+        : '')
+    : '';
+
+  const category = (Array.isArray(movie.category)
+    ? movie.category
+    : []
+  ).join(', ');
+
+  return `Xem phim ${movie.name} (${movie.origin_name || 'đang cập nhật'}) - ${country} ${category}`;
+}
 
 const fetchList = async (url) => {
     try {
@@ -317,7 +348,7 @@ app.get('/', async (req, res) => {
                     display: display,
                     enable_detail: true,
                     grid_number: 1,
-                    channels: items.map(item => formatChannel(item, true, req)),
+                    channels: items.map(item => formatChannel(item, false, req)),
                     remote_data: {
                         url: `${APP_HOST}/list?type=${id}`
                     }
@@ -386,10 +417,29 @@ app.get('/detail', async (req, res) => {
         });
 
         res.json({
+            id: movie._id || movie.slug,
+            name: movie.name,
+            subtitle: movie.origin_name || movie.name,
+            description: getDescription(movie),
+            type: "playlist",
+            display: "text-below",
+            enable_detail: true,
+            image: {
+                url: getPosterUrl(movie.thumb_url || movie.poster_url),
+                type: "cover",
+                width: 640,
+                height: 480
+            },
+            remote_data: {
+                url: `${APP_HOST}/detail?slug=${movie.slug}`
+            },
+            share: {
+                url: `${APP_HOST}/detail?slug=${movie.slug}`
+            },
             sources: [
                 {
                     id: movie._id || movie.slug,
-                    name: movie.name,
+                    name: "Nguồn",
                     contents: contents
                 }
             ]
