@@ -392,19 +392,21 @@ app.get('/detail', async (req, res) => {
             const streams = [];
             if (server.server_data) {
                 server.server_data.forEach(ep => {
-                    streams.push({
-                        id: `${server.server_name}-${ep.slug}`,
-                        name: ep.name,
-                        // image: {
-                        //     url: getPosterUrl(movie.thumb_url || movie.poster_url),
-                        //     type: "contain",
-                        //     width: 128,
-                        //     height: 72
-                        // },
-                        remote_data: {
-                            url: `${APP_HOST}/stream?slug=${slug}&server=${encodeURIComponent(server.server_name)}&ep=${ep.slug}`
-                        }
-                    });
+                    if(ep.link_embed || ep.link_m3u8 || ep.link_m3u){
+                        streams.push({
+                            id: `${server.server_name}-${ep.slug}`,
+                            name: ep.name,
+                            // image: {
+                            //     url: getPosterUrl(movie.thumb_url || movie.poster_url),
+                            //     type: "contain",
+                            //     width: 128,
+                            //     height: 72
+                            // },
+                            remote_data: {
+                                url: `${APP_HOST}/stream?slug=${slug}&server=${encodeURIComponent(server.server_name)}&ep=${ep.slug}`
+                            }
+                        });   
+                    }
                 });
 
                 contents.push({
