@@ -1,7 +1,7 @@
 {
-  "name": "kkphim-monplayer",
+  "name": "kkphim-nguonc-monplayer",
   "version": "1.0.0",
-  "description": "KKPhim json api for MonPlayer",
+  "description": "KKPhim, Nguonc json api for MonPlayer",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

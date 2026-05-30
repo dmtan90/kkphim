@@ -1,0 +1,12 @@
+{
+    "stream_links": [
+        {
+            "id": "b2fd0df7-0738-4622-805b-6860aa728584",
+            "name": "THVLi",
+            "url": "https://vod.thvli.vn/DvcIutKQHkCdM0b5hTBPDw/1778731906/202407/thvli_viral_nguoithamlang_e124_std/e1671954/hls/playlist.m3u8",
+            "type": "hls",
+            "start_time": 0,
+            "default": false
+        }
+    ]
+}

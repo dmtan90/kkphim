@@ -1,0 +1,433 @@
+{
+    "sources": [
+        {
+            "id": "9f4d5291-d7ab-4717-aa06-dab160eb35a8",
+            "name": "THVLi",
+            "contents": [
+                {
+                    "id": "9f4d5291-d7ab-4717-aa06-dab160eb35a8",
+                    "name": "Người Thầm Lặng",
+                    "grid_number": 3,
+                    "streams": [
+                        {
+                            "id": "b2fd0df7-0738-4622-805b-6860aa728584",
+                            "name": "Tập 1",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/07/30/b7qprot1_THUMBNAIL-(408)-sua124.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=b2fd0df7-0738-4622-805b-6860aa728584"
+                            }
+                        },
+                        {
+                            "id": "fec1e93c-3051-4a32-bedc-8b202b474143",
+                            "name": "Tập 2",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/07/30/1w2vvbsz_THUMBNAIL-(408)-sua125.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=fec1e93c-3051-4a32-bedc-8b202b474143"
+                            }
+                        },
+                        {
+                            "id": "d0b6f2dd-292b-4536-89f0-c5ff53765368",
+                            "name": "Tập 3",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/08/06/fqw5m6pt_THUMBNAIL-(408)-sua126.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=d0b6f2dd-292b-4536-89f0-c5ff53765368"
+                            }
+                        },
+                        {
+                            "id": "c1cd1365-8383-4133-8662-0a348efbb188",
+                            "name": "Tập 4",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/08/06/j637ihsy_THUMBNAIL-(408)-sua127.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=c1cd1365-8383-4133-8662-0a348efbb188"
+                            }
+                        },
+                        {
+                            "id": "b0065097-528d-400d-b898-b0789c923265",
+                            "name": "Tập 5",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/08/26/533d20o8_THUMBNAIL-(408)-sua132.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=b0065097-528d-400d-b898-b0789c923265"
+                            }
+                        },
+                        {
+                            "id": "b7495595-4a17-4c4c-bc65-319d31e6d606",
+                            "name": "Tập 6",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/08/26/e1h2kemq_THUMBNAIL-(408)-sua133.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=b7495595-4a17-4c4c-bc65-319d31e6d606"
+                            }
+                        },
+                        {
+                            "id": "8be71235-0b0d-42b0-b1d6-7a75eabecbcf",
+                            "name": "Tập 7",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/09/09/shtyna1y_THUMBNAIL-(408)-sua136.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=8be71235-0b0d-42b0-b1d6-7a75eabecbcf"
+                            }
+                        },
+                        {
+                            "id": "14689ccb-98ec-483a-a662-895f537788fd",
+                            "name": "Tập 8",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/09/09/x012bztj_THUMBNAIL-(408)-sua137.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=14689ccb-98ec-483a-a662-895f537788fd"
+                            }
+                        },
+                        {
+                            "id": "c6969341-655c-4645-b627-50fda91b671e",
+                            "name": "Tập 9",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/09/16/61hgc41w_THUMBNAIL-(408)-sua.jpg138.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=c6969341-655c-4645-b627-50fda91b671e"
+                            }
+                        },
+                        {
+                            "id": "b63f21bb-51f5-48ad-8ef9-900ac572c96a",
+                            "name": "Tập 10",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/09/16/oz9d0sfr_THUMBNAIL-(408)-sua139.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=b63f21bb-51f5-48ad-8ef9-900ac572c96a"
+                            }
+                        },
+                        {
+                            "id": "e62dd35f-503e-49fa-985b-343105385ae4",
+                            "name": "Tập 11",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/09/23/h5fsrvip_THUMBNAIL-(408)-sua140.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=e62dd35f-503e-49fa-985b-343105385ae4"
+                            }
+                        },
+                        {
+                            "id": "10f25b29-e048-4854-8fb7-dc2a43aace2c",
+                            "name": "Tập 12",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/09/23/e67zb7wd_THUMBNAIL-(408)-sua141.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=10f25b29-e048-4854-8fb7-dc2a43aace2c"
+                            }
+                        },
+                        {
+                            "id": "2b516ef7-60d3-4fdf-9946-c2c800885804",
+                            "name": "Tập 13",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/10/01/9o97mjn7_THUMBNAIL-(408)-sua142.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=2b516ef7-60d3-4fdf-9946-c2c800885804"
+                            }
+                        },
+                        {
+                            "id": "8b82ec11-e9c5-47ce-9afa-ceefa1de79de",
+                            "name": "Tập 14",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/10/01/w5sa0nwj_THUMBNAIL-(408)-sua143.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=8b82ec11-e9c5-47ce-9afa-ceefa1de79de"
+                            }
+                        },
+                        {
+                            "id": "bdda8956-0daf-40a8-8137-e61816edc444",
+                            "name": "Tập 15",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/10/07/tbvpvc0e_THUMBNAIL-(408)-sua144.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=bdda8956-0daf-40a8-8137-e61816edc444"
+                            }
+                        },
+                        {
+                            "id": "111c811f-80b5-48af-bd40-bd88d661268f",
+                            "name": "Tập 16",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/10/07/7d0ha8k1_THUMBNAIL-(408)-sua145.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=111c811f-80b5-48af-bd40-bd88d661268f"
+                            }
+                        },
+                        {
+                            "id": "34ebfb38-fb3d-4c13-926b-d66ac02ee068",
+                            "name": "Tập 17",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/10/15/b20jswtn_THUMBNAIL-(408)-sua.jpg146.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=34ebfb38-fb3d-4c13-926b-d66ac02ee068"
+                            }
+                        },
+                        {
+                            "id": "a525e38d-afe1-484f-a627-88a1971b447f",
+                            "name": "Tập 18",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/10/15/pinsqp1q_THUMBNAIL-(408)-sua147.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=a525e38d-afe1-484f-a627-88a1971b447f"
+                            }
+                        },
+                        {
+                            "id": "6e467ab1-3cb5-4ad0-aa67-ae9cde383971",
+                            "name": "Tập 19",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/10/21/y3brgq8f_THUMBNAIL-(408)-sua148.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=6e467ab1-3cb5-4ad0-aa67-ae9cde383971"
+                            }
+                        },
+                        {
+                            "id": "5a65080c-d5b0-4b62-b8fd-5fbab190c0bd",
+                            "name": "Tập 20",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/10/21/dd9z8id9_THUMBNAIL-(408)-sua149.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=5a65080c-d5b0-4b62-b8fd-5fbab190c0bd"
+                            }
+                        },
+                        {
+                            "id": "0787fddb-8df3-45f0-8bb9-58382233452b",
+                            "name": "Tập 21",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/11/11/ebqt5psx_THUMBNAIL-(408)-sua154.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=0787fddb-8df3-45f0-8bb9-58382233452b"
+                            }
+                        },
+                        {
+                            "id": "72e0c794-13d4-43cb-a9e0-6ef5d96b4a6e",
+                            "name": "Tập 22",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/11/11/rguccjhh_THUMBNAIL-(408)-sua155.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=72e0c794-13d4-43cb-a9e0-6ef5d96b4a6e"
+                            }
+                        },
+                        {
+                            "id": "25f14f3a-8199-40f4-8afb-30b48288d80b",
+                            "name": "Tập 23",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/11/19/xpcktqgw_THUMBNAIL-(408)-sua156.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=25f14f3a-8199-40f4-8afb-30b48288d80b"
+                            }
+                        },
+                        {
+                            "id": "553ca1d0-eceb-426b-a3f9-716b7938917c",
+                            "name": "Tập 24",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/11/19/z85vgwqx_THUMBNAIL-(408)-sua157.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=553ca1d0-eceb-426b-a3f9-716b7938917c"
+                            }
+                        },
+                        {
+                            "id": "7445e74f-640d-4855-a803-749336fe1d79",
+                            "name": "Tập 25",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/11/26/3y1hy0vf_THUMBNAIL-(408)-sua158.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=7445e74f-640d-4855-a803-749336fe1d79"
+                            }
+                        },
+                        {
+                            "id": "de1ae616-4b3e-438a-a7c2-4915bfd6d92d",
+                            "name": "Tập 26",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/11/26/pj0grhqg_THUMBNAIL-(408)-sua159.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=de1ae616-4b3e-438a-a7c2-4915bfd6d92d"
+                            }
+                        },
+                        {
+                            "id": "9e52c927-00e5-40e3-9216-dc65e11d0074",
+                            "name": "Tập 27",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/12/02/ez1b0hur_THUMBNAIL-(408)-sua160.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=9e52c927-00e5-40e3-9216-dc65e11d0074"
+                            }
+                        },
+                        {
+                            "id": "28c98d50-b053-4288-a5ff-5fdfd1100361",
+                            "name": "Tập 28",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/12/02/2pgff0qk_THUMBNAIL-(408)-sua161.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=28c98d50-b053-4288-a5ff-5fdfd1100361"
+                            }
+                        },
+                        {
+                            "id": "ece4cfda-4331-41af-8be0-3ce26eb5670f",
+                            "name": "Tập 29",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/12/09/wdovg1i7_NguoiThamLang_Viral_162W.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=ece4cfda-4331-41af-8be0-3ce26eb5670f"
+                            }
+                        },
+                        {
+                            "id": "dccac1c1-2f0c-46f3-a862-91ef844591dc",
+                            "name": "Tập 30",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/12/09/1gsv2675_NguoiThamLang_Viral_163_W.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=dccac1c1-2f0c-46f3-a862-91ef844591dc"
+                            }
+                        },
+                        {
+                            "id": "d28ea0dc-5f69-4031-8160-2ca4f82e7eba",
+                            "name": "Tập 31",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/12/17/4gopj8wc_THUMBNAIL-(408)-sua164.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=d28ea0dc-5f69-4031-8160-2ca4f82e7eba"
+                            }
+                        },
+                        {
+                            "id": "a1be28be-41b9-4a55-a7d5-6a50c6387635",
+                            "name": "Tập 32",
+                            "image": {
+                                "url": "http://static3.thvli.vn/assets/thumbnail/2024/12/17/0i16by0y_THUMBNAIL-(408)-sua165.jpg",
+                                "type": "contain",
+                                "width": 129,
+                                "height": 73
+                            },
+                            "remote_data": {
+                                "url": "https://hailab.cloud/iptv/thvli/get_play.php?ep_id=a1be28be-41b9-4a55-a7d5-6a50c6387635"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

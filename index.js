@@ -5,21 +5,30 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 
-const API_BASE = 'https://phimapi.com';
-const APP_HOST = 'https://kkphim.agrhub.com';
-const APP_PORT = 3005;
-
-// Utilities
-const getPosterUrl = (path) => {
-    if (!path) return "";
-    if (path.startsWith("http")) return path;
-    return `https://phimapi.com/image.php?url=https://phimimg.com/${path}`;
+// Helper for dynamic app host
+const getAppHost = (req, prefix = '') => {
+    const host = req.get('host');
+    const protocol = req.protocol;
+    return `${protocol}://${host}${prefix}`;
 };
 
-const formatChannel = (item, landscape = true, req) => {
+// ==========================================
+// KKPHIM API INTEGRATION (phimapi.com)
+// ==========================================
+const KKPHIM_API_BASE = 'https://phimapi.com';
+
+const getKkphimPosterUrl = (path) => {
+    if (!path) return "";
+    if (path.includes("phimimg.com")) {
+        return `https://phimapi.com/image.php?url=${path}`;
+    }
+    return path;
+};
+
+const formatKkphimChannel = (item, landscape = true, req, appHost) => {
     let width = landscape ? 640 : 480;
     let height = landscape ? 480 : 640;
-    let poster_url = item.poster_url || item.thumb_url;//thumb_url=16:9; poster_url=9:16
+    let poster_url = item.poster_url || item.thumb_url;
     if (landscape) {
         poster_url = item.thumb_url || item.poster_url;
     }
@@ -32,34 +41,31 @@ const formatChannel = (item, landscape = true, req) => {
         display: "text-below",
         enable_detail: true,
         image: {
-            url: getPosterUrl(poster_url),
+            url: getKkphimPosterUrl(poster_url),
             type: "cover",
             width: width,
             height: height
         },
         remote_data: {
-            url: `${APP_HOST}/detail?slug=${item.slug}`
+            url: `${appHost}/detail?slug=${item.slug}`
         },
         share: {
-            url: `${APP_HOST}/detail?slug=${item.slug}`
+            url: `${appHost}/detail?slug=${item.slug}`
         }
     };
 };
 
-function getDescription(movie) {
+function getKkphimDescription(movie) {
   const { description, content, lang } = movie;
 
-  // 1. Ưu tiên content (nếu là tiếng Việt - là nội dung chính)
   if (content) {
     return content;
   }
 
-  // 2. Nếu content rỗng, dùng description
   if (description) {
     return description;
   }
 
-  // 3. Fallback: tự động tạo từ info
   const country = lang?.country
     ? (typeof lang.country === 'string'
         ? lang.country
@@ -76,7 +82,7 @@ function getDescription(movie) {
   return `Xem phim ${movie.name} (${movie.origin_name || 'đang cập nhật'}) - ${country} ${category}`;
 }
 
-const fetchList = async (url) => {
+const fetchKkphimList = async (url) => {
     try {
         const response = await axios.get(url);
         const data = response.data;
@@ -95,553 +101,993 @@ const fetchList = async (url) => {
         return {items, pagination};
     } catch (error) {
         console.error(`Error fetching ${url}:`, error.message);
+        return {items: [], pagination: {}};
+    }
+};
+
+const createKkphimRouter = () => {
+    const router = express.Router();
+
+    router.get('/', async (req, res) => {
+        const appHost = getAppHost(req, req.baseUrl);
+        try {
+            const [phimMoi, phimVN, phimTQ, phimUS, phimBo, phimLe, hoatHinh, tvShows, phimVietsub, phimLongTieng, phimThuyetMinh] = await Promise.all([
+                fetchKkphimList(`${KKPHIM_API_BASE}/danh-sach/phim-moi-cap-nhat?page=1`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/quoc-gia/viet-nam?page=1`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/quoc-gia/trung-quoc?page=1`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/quoc-gia/au-my?page=1`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-bo?page=1`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-le?page=1`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/hoat-hinh?page=1`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/tv-shows?page=1`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-vietsub?page=1`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-long-tieng?page=1`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-thuyet-minh?page=1`)
+            ]);
+            
+            const response = {
+                id: "kkphim",
+                name: "KKPhim",
+                description: "KKPhim - Ứng dụng xem phim miễn phí",
+                url: `${appHost}`,
+                color: "#2c70b0",
+                image: {
+                    url: "https://kkphim.vip/assets/img/logo-2.png",
+                    type: "contain",
+                    height: 111,
+                    width: 300
+                },
+                notice: {
+                    id: "notice",
+                    link: "https://phimapi.com",
+                    text: "Info",
+                    icon: "https://kkphim.vip/assets/img/logo-2.png",
+                    closeable: true
+                },
+                search: {
+                    url: `${appHost}/search`,
+                    suggest_url: `${appHost}/suggest`,
+                    search_key: "keyword",
+                    paging: {
+                        page_key: "page",
+                        size_key: "limit"
+                    }
+                },
+                sorts: [
+                    { type: "dropdown", text: "Thể loại", value: [
+                        { text: "Hành Động", type: "radio", url: `${appHost}/list?category=hanh-dong` },
+                        { text: "Hài Hước", type: "radio", url: `${appHost}/list?category=hai-huoc` },
+                        { text: "Tình Cảm", type: "radio", url: `${appHost}/list?category=tinh-cam` },
+                        { text: "Kinh Dị", type: "radio", url: `${appHost}/list?category=kinh-di` },
+                        { text: "Phiêu Lưu", type: "radio", url: `${appHost}/list?category=phieu-luu` },
+                        { text: "Khoa Học Viễn Tưởng", type: "radio", url: `${appHost}/list?category=khoa-hoc-vien-tuong` },
+                        { text: "Tâm Lý", type: "radio", url: `${appHost}/list?category=tam-ly` },
+                        { text: "Chính Kịch", type: "radio", url: `${appHost}/list?category=chinh-kich` },
+                        { text: "Giả Tưởng", type: "radio", url: `${appHost}/list?category=gia-tuong` },
+                        { text: "Gia Đình", type: "radio", url: `${appHost}/list?category=gia-dinh` },
+                        { text: "Chiến Tranh", type: "radio", url: `${appHost}/list?category=chien-tranh` },
+                        { text: "Hình Sự", type: "radio", url: `${appHost}/list?category=hinh-su` },
+                        { text: "Âm Nhạc", type: "radio", url: `${appHost}/list?category=am-nhac` },
+                        { text: "Thể Thao", type: "radio", url: `${appHost}/list?category=the-thao` },
+                        { text: "Bí Ẩn", type: "radio", url: `${appHost}/list?category=bi-an` },
+                        { text: "Lịch Sử", type: "radio", url: `${appHost}/list?category=lich-su` },
+                        { text: "Phim Tài Liệu", type: "radio", url: `${appHost}/list?category=phim-tai-lieu` },
+                        { text: "Phim Ngắn", type: "radio", url: `${appHost}/list?category=phim-ngan` },
+                        { text: "Phim Lẻ", type: "radio", url: `${appHost}/list?category=phim-le` },
+                        { text: "Phim Bộ", type: "radio", url: `${appHost}/list?category=phim-bo` },
+                        { text: "Hoạt Hình", type: "radio", url: `${appHost}/list?category=hoat-hinh` },
+                        { text: "TV Shows", type: "radio", url: `${appHost}/list?category=tv-shows` }
+                    ] },
+                    { type: "dropdown", text: "Quốc gia", value: [
+                        { text: "Việt Nam", type: "radio", url: `${appHost}/list?country=viet-nam` },
+                        { text: "Trung Quốc", type: "radio", url: `${appHost}/list?country=trung-quoc` },
+                        { text: "Hồng Kông", type: "radio", url: `${appHost}/list?country=hong-kong` },
+                        { text: "Hàn Quốc", type: "radio", url: `${appHost}/list?country=han-quoc` },
+                        { text: "Nhật Bản", type: "radio", url: `${appHost}/list?country=nhat-ban` },
+                        { text: "Mỹ", type: "radio", url: `${appHost}/list?country=my` },
+                        { text: "Anh", type: "radio", url: `${appHost}/list?country=anh` },
+                        { text: "Pháp", type: "radio", url: `${appHost}/list?country=phap` },
+                        { text: "Đức", type: "radio", url: `${appHost}/list?country=duc` },
+                        { text: "Ấn Độ", type: "radio", url: `${appHost}/list?country=an-do` },
+                        { text: "Thái Lan", type: "radio", url: `${appHost}/list?country=thai-lan` },
+                        { text: "Tây Ban Nha", type: "radio", url: `${appHost}/list?country=tay-ban-nha` },
+                        { text: "Ý", type: "radio", url: `${appHost}/list?country=y` },
+                        { text: "Châu Âu", type: "radio", url: `${appHost}/list?country=chau-au` },
+                        { text: "Châu Á", type: "radio", url: `${appHost}/list?country=chau-a` },
+                        { text: "Châu Mỹ", type: "radio", url: `${appHost}/list?country=chau-my` },
+                        { text: "Châu Phi", type: "radio", url: `${appHost}/list?country=chau-phi` },
+                        { text: "Châu Úc", type: "radio", url: `${appHost}/list?country=chau-uc` }
+                    ] },
+                    { type: "dropdown", text: "Năm", value: [
+                        { text: "2026", type: "radio", url: `${appHost}/list?year=2026` },
+                        { text: "2025", type: "radio", url: `${appHost}/list?year=2025` },
+                        { text: "2024", type: "radio", url: `${appHost}/list?year=2024` },
+                        { text: "2023", type: "radio", url: `${appHost}/list?year=2023` },
+                        { text: "2022", type: "radio", url: `${appHost}/list?year=2022` },
+                        { text: "2021", type: "radio", url: `${appHost}/list?year=2021` },
+                        { text: "2020", type: "radio", url: `${appHost}/list?year=2020` },
+                        { text: "2019", type: "radio", url: `${appHost}/list?year=2019` },
+                        { text: "2018", type: "radio", url: `${appHost}/list?year=2018` },
+                        { text: "2017", type: "radio", url: `${appHost}/list?year=2017` },
+                        { text: "2016", type: "radio", url: `${appHost}/list?year=2016` },
+                        { text: "2015", type: "radio", url: `${appHost}/list?year=2015` },
+                        { text: "2014", type: "radio", url: `${appHost}/list?year=2014` },
+                        { text: "2013", type: "radio", url: `${appHost}/list?year=2013` },
+                        { text: "2012", type: "radio", url: `${appHost}/list?year=2012` },
+                        { text: "2011", type: "radio", url: `${appHost}/list?year=2011` },
+                        { text: "2010", type: "radio", url: `${appHost}/list?year=2010` }
+                    ] },
+                    { type: "dropdown", text: "Phân loại", value: [
+                        { text: "Phim bộ", type: "radio", url: `${appHost}/list?type=phim-bo` },
+                        { text: "Phim lẻ", type: "radio", url: `${appHost}/list?type=phim-le` },
+                        { text: "TV Shows", type: "radio", url: `${appHost}/list?type=tv-shows` },
+                        { text: "Hoạt hình", type: "radio", url: `${appHost}/list?type=hoat-hinh` },
+                        { text: "Phim Vietsub", type: "radio", url: `${appHost}/list?type=phim-vietsub` },
+                        { text: "Phim Thuyết Minh", type: "radio", url: `${appHost}/list?type=phim-thuyet-minh` },
+                        { text: "Phim Lồng Tiếng", type: "radio", url: `${appHost}/list?type=phim-long-tieng` }
+                    ] }
+                ],
+                grid_number: 1,
+                groups: [],
+                option: {
+                    save_history: true,
+                    save_search_history: true,
+                    save_wishlist: true
+                }
+            };
+
+            const addGroup = (id, name, display, items) => {
+                if (items && items.length > 0) {
+                    response.groups.push({
+                        id: id,
+                        name: name,
+                        display: display,
+                        enable_detail: true,
+                        grid_number: 1,
+                        channels: items.map(item => formatKkphimChannel(item, false, req, appHost)),
+                        remote_data: {
+                            url: `${appHost}/list?type=${id}`
+                        }
+                    });
+                }
+            };
+
+            addGroup("phim-moi-cap-nhat", "Mới cập nhật", "slider", phimMoi.items);
+            addGroup("viet-nam", "Phim Việt Nam", "horizontal", phimVN.items);
+            addGroup("trung-quoc", "Phim Trung Quốc", "horizontal", phimTQ.items);
+            addGroup("au-my", "Âu Mỹ", "horizontal", phimUS.items);
+            addGroup("phim-bo", "Phim Bộ", "horizontal", phimBo.items);
+            addGroup("phim-le", "Phim Lẻ", "horizontal", phimLe.items);
+            addGroup("hoat-hinh", "Hoạt Hình", "horizontal", hoatHinh.items);
+            addGroup("tv-shows", "TV Shows", "horizontal", tvShows.items);
+            addGroup("phim-vietsub", "Phim Vietsub", "horizontal", phimVietsub.items);
+            addGroup("phim-thuyet-minh", "Phim Thuyết Minh", "horizontal", phimThuyetMinh.items);
+            addGroup("phim-long-tieng", "Phim Lồng Tiếng", "horizontal", phimLongTieng.items);
+
+            res.json(response);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+
+    router.get('/detail', async (req, res) => {
+        const appHost = getAppHost(req, req.baseUrl);
+        const slug = req.query.slug;
+        if (!slug) return res.status(400).json({ error: "Missing slug parameter" });
+
+        try {
+            const response = await axios.get(`${KKPHIM_API_BASE}/phim/${slug}`);
+            const data = response.data;
+            if (!data.status) {
+                 return res.status(404).json({ error: "Movie not found" });
+            }
+
+            const movie = data.movie;
+            const episodes = data.episodes || [];
+
+            const contents = [];
+            episodes.forEach(server => {
+                const streams = [];
+                if (server.server_data) {
+                    server.server_data.forEach(ep => {
+                        if(ep.link_embed || ep.link_m3u8 || ep.link_m3u){
+                            streams.push({
+                                id: `${server.server_name}-${ep.slug}`,
+                                name: ep.name,
+                                remote_data: {
+                                    url: `${appHost}/stream?slug=${slug}&server=${encodeURIComponent(server.server_name)}&ep=${ep.slug}`
+                                }
+                            });   
+                        }
+                    });
+
+                    contents.push({
+                        id: `${movie._id || movie.slug}-${server.server_name}`,
+                        name: server.server_name,
+                        grid_number: 3,
+                        streams: streams
+                    });
+                }
+            });
+
+            res.json({
+                id: movie._id || movie.slug,
+                name: movie.name,
+                subtitle: movie.origin_name || movie.name,
+                description: getKkphimDescription(movie),
+                type: "playlist",
+                display: "text-below",
+                enable_detail: true,
+                image: {
+                    url: getKkphimPosterUrl(movie.thumb_url || movie.poster_url),
+                    type: "cover",
+                    width: 640,
+                    height: 480
+                },
+                remote_data: {
+                    url: `${appHost}/detail?slug=${movie.slug}`
+                },
+                share: {
+                    url: `${appHost}/detail?slug=${movie.slug}`
+                },
+                sources: [
+                    {
+                        id: movie._id || movie.slug,
+                        name: "Nguồn",
+                        contents: contents
+                    }
+                ]
+            });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+
+    router.get('/stream', async (req, res) => {
+        const slug = req.query.slug;
+        const server = req.query.server;
+        const ep = req.query.ep;
+        const start_time = req.query.start_time || 0;
+        
+        if (!slug) return res.status(400).json({ error: "Missing slug parameter" });
+        if (!server) return res.status(400).json({ error: "Missing server parameter" });
+        if (!ep) return res.status(400).json({ error: "Missing episode parameter" });
+
+        try {
+            const response = await axios.get(`${KKPHIM_API_BASE}/phim/${slug}`);
+            const data = response.data;
+            if (!data.status) {
+                 return res.status(404).json({ error: "Movie not found" });
+            }
+
+            const movie = data.movie;
+            const episodes = data.episodes || [];
+            let id = "";
+            let name = "";
+            let stream_url = "";
+            let stream_type = "hls";
+            for(let i = 0; i < episodes.length; i++){
+                let item = episodes[i];
+                if(item.server_data?.length > 0 && item.server_name === server){
+                    for(let j = 0; j < item.server_data.length; j++){
+                        let epItem = item.server_data[j];
+                        if(epItem.slug === ep){
+                            id = epItem.slug;
+                            name = epItem.name;
+                            stream_url = epItem.link_m3u8 || epItem.link_embed;
+                            stream_type = epItem.link_m3u8 ? "hls" : "webview";
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            res.json({
+                stream_links: [{
+                    id: id,
+                    name: name,
+                    url: stream_url,
+                    type: stream_type,
+                    start_time: Number.parseInt(start_time),
+                    default: false
+                }]
+            });
+        } catch (error) {
+             console.error(error);
+             res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+
+    router.get('/search', async (req, res) => {
+        const appHost = getAppHost(req, req.baseUrl);
+        const keyword = req.query.keyword;
+        if (!keyword) return res.status(400).json({ error: "Missing keyword parameter" });
+        const limit = req.query.limit || 24;
+        const page = req.query.page || 1;
+        const sortType = req.query.sort_type || 'desc';
+        const sortField = req.query.sort_field || '_id';
+
+        try {
+            const { items, pagination }  = await fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&limit=${limit}&page=${page}&sort_field=${sortField}&sort_type=${sortType}`);
+            
+            res.json({
+                grid_number: 3,
+                groups: [
+                    {
+                        id: "near-matches",
+                        name: `Kết quả tìm kiếm: ${keyword} (${pagination?.totalItems ?? 0})`,
+                        display: "vertical",
+                        enable_detail: true,
+                        grid_number: 3,
+                        channels: items.map(item => formatKkphimChannel(item, false, req, appHost)),
+                    }
+                ],
+                load_more: {
+                    remote_data: {
+                        url: `${appHost}/search?keyword=${encodeURIComponent(keyword)}`
+                    },
+                    pageInfo: {
+                        current_page: pagination.currentPage ?? page,
+                        total: pagination.totalItems ?? 0,
+                        per_page: pagination.totalItemsPerPage ?? limit,
+                        last_page: pagination.totalPages ?? page
+                    },
+                    paging: {
+                        page_key: "page",
+                        size_key: "limit"
+                    }
+                }
+            });
+        } catch (error) {
+             console.error(error);
+             res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+
+    router.get('/suggest', async (req, res) => {
+        const keyword = req.query.keyword;
+        if (!keyword) return res.status(400).json({ error: "Missing keyword parameter" });
+
+        try {
+            const { items }  = await fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`);
+            res.json(items.map(item => item.name));
+        } catch (error) {
+             console.error(error);
+             res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+
+    router.get('/list', async (req, res) => {
+        const appHost = getAppHost(req, req.baseUrl);
+        let type = req.query.type;
+        const page = req.query.page || 1;
+        const limit = req.query.limit || 24;
+        const category = req.query.category;
+        const country = req.query.country;
+        const year = req.query.year;
+        const sortField = req.query.sort_field || '_id';
+        const sortType = req.query.sort_type || 'desc';
+
+        try {
+            let url = `${KKPHIM_API_BASE}/v1/api/danh-sach/${type}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+            let remote_url = `${appHost}/list?limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+            
+            if (type) {
+                remote_url += `&type=${type}`;
+            }
+
+            if(country && !type){
+                url = `${KKPHIM_API_BASE}/v1/api/quoc-gia/${country}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+                remote_url += `&country=${country}`;
+            }
+            else if(category && !type){
+                url = `${KKPHIM_API_BASE}/v1/api/the-loai/${category}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+                remote_url += `&category=${category}`;
+            }
+            else if(year && !type){
+                url = `${KKPHIM_API_BASE}/v1/api/nam/${year}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+                remote_url += `&year=${year}`;
+            }
+            else{
+                if(!type){
+                    type = "phim-moi-cap-nhat-v3";
+                }
+                url = `${KKPHIM_API_BASE}/v1/api/danh-sach/${type}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+                remote_url += `&type=${type}`;
+                if (category){
+                    url += `&category=${category}`;
+                    remote_url += `&category=${category}`;
+                } 
+                if (country){
+                    url += `&country=${country}`;
+                    remote_url += `&country=${country}`;
+                } 
+                if (year){
+                    url += `&year=${year}`;
+                    remote_url += `&year=${year}`;
+                } 
+            }
+
+            const { items, pagination } = await fetchKkphimList(url);
+
+            res.json({
+                grid_number: 3,
+                enable_detail: true,
+                channels: items.map(item => formatKkphimChannel(item, false, req, appHost)),
+                load_more: {
+                    remote_data: {
+                        url: remote_url
+                    },
+                    pageInfo: {
+                        current_page: pagination.currentPage,
+                        total: pagination.totalItems,
+                        per_page: pagination.totalItemsPerPage,
+                        last_page: pagination.totalPages
+                    },
+                    paging: {
+                        page_key: "page",
+                        size_key: "limit"
+                    }
+                }
+            });
+        } catch (error) {
+             console.error(error);
+             res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+
+    return router;
+};
+
+// ==========================================
+// NGUONC API INTEGRATION (phim.nguonc.com)
+// ==========================================
+const NGUONC_API_BASE = 'https://phim.nguonc.com/api';
+
+const resolveNguoncStream = async (embedUrl) => {
+    try {
+        // const parsedUrl = new URL(embedUrl);
+        // const domain = parsedUrl.origin;
+        
+        // const response = await axios.get(embedUrl, {
+        //     headers: {
+        //         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        //         'Referer': embedUrl
+        //     }
+        // });
+        
+        // const html = response.data;
+        // const matchObf = html.match(/data-obf=["']([^"']+)["']/);
+        // if (matchObf && matchObf[1]) {
+        //     const obfBase64 = matchObf[1];
+        //     const streamData = JSON.parse(atob(obfBase64));
+        //     if (streamData.sUb) {
+        //         return {
+        //             url: `${domain}/${streamData.sUb}.m3u8`,
+        //             hash: streamData.hD || ""
+        //         };
+        //     }
+        // }
+    } catch (error) {
+        console.error("Error resolving NguonC stream:", error.message);
+    }
+    return null;
+};
+
+const formatNguoncChannel = (item, landscape = true, req, appHost) => {
+    let width = landscape ? 640 : 480;
+    let height = landscape ? 480 : 640;
+    let poster_url = item.thumb_url || item.poster_url;
+    if (landscape) {
+        poster_url = item.poster_url || item.thumb_url;
+    }
+    return {
+        id: item.slug,
+        name: item.name,
+        subtitle: item.original_name,
+        description: getNguoncDescription(item),
+        type: "playlist",
+        display: "text-below",
+        enable_detail: true,
+        image: {
+            url: getKkphimPosterUrl(poster_url), // getKkphimPosterUrl handles http prefix correctly
+            type: "cover",
+            width: width,
+            height: height
+        },
+        remote_data: {
+            url: `${appHost}/detail?slug=${item.slug}`
+        },
+        share: {
+            url: `${appHost}/detail?slug=${item.slug}`
+        }
+    };
+};
+
+function getNguoncDescription(movie) {
+  const { description, original_name } = movie;
+  if (description) {
+    return description.replace(/<[^>]*>/g, '').trim();
+  }
+
+  const categories = [];
+  if (movie.category && movie.category['2'] && Array.isArray(movie.category['2'].list)) {
+    movie.category['2'].list.forEach(c => categories.push(c.name));
+  }
+  const catStr = categories.join(', ');
+
+  let country = '';
+  if (movie.category && movie.category['4'] && Array.isArray(movie.category['4'].list)) {
+    country = movie.category['4'].list.map(c => c.name).join(', ');
+  }
+
+  return `Xem phim ${movie.name} (${original_name || 'đang cập nhật'}) - ${country} ${catStr}`;
+}
+
+const fetchNguoncList = async (url) => {
+    try {
+        const response = await axios.get(url);
+        return response.data?.items || [];
+    } catch (error) {
+        console.error(`Error fetching ${url}:`, error.message);
         return [];
     }
 };
 
-// 1. GET / (Home)
-app.get('/', async (req, res) => {
-    try {
-        const [phimMoi, phimBo, phimLe, hoatHinh, tvShows, phimVietsub, phimLongTieng, phimThuyetMinh] = await Promise.all([
-            fetchList(`${API_BASE}/danh-sach/phim-moi-cap-nhat?page=1`),
-            fetchList(`${API_BASE}/v1/api/danh-sach/phim-bo?page=1`),
-            fetchList(`${API_BASE}/v1/api/danh-sach/phim-le?page=1`),
-            fetchList(`${API_BASE}/v1/api/danh-sach/hoat-hinh?page=1`),
-            fetchList(`${API_BASE}/v1/api/danh-sach/tv-shows?page=1`),
-            fetchList(`${API_BASE}/v1/api/danh-sach/phim-vietsub?page=1`),
-            fetchList(`${API_BASE}/v1/api/danh-sach/phim-long-tieng?page=1`),
-            fetchList(`${API_BASE}/v1/api/danh-sach/phim-thuyet-minh?page=1`)
-            
-        ]);
-        
-        const response = {
-            id: "kkphim",
-            name: "KKPhim",
-            description: "KKPhim - Ứng dụng xem phim miễn phí",
-            url: `${APP_HOST}`,
-            color: "#2c70b0",
-            image: {
-                url: "https://kkphim.vip/assets/img/logo-2.png",
-                type: "contain",
-                height: 111,
-                width: 300
-            },
-            notice: {
-                id: "notice",
-                link: "https://phimapi.com",
-                text: "Info",
-                icon: "https://kkphim.vip/assets/img/logo-2.png",
-                closeable: true
-            },
-            search: {
-                url: `${APP_HOST}/search`,
-                suggest_url: `${APP_HOST}/suggest`,
-                search_key: "keyword",
-                paging: {
-                    page_key: 'page',
-                    size_key: 'limit'
-                }
-            },
-            sorts: [
-                { type: "dropdown", text: "Thể loại", value: [
-                    { text: "Hành Động", type: "radio", url: `${APP_HOST}/list?category=hanh-dong` },
-                    { text: "Hài Hước", type: "radio", url: `${APP_HOST}/list?category=hai-huoc` },
-                    { text: "Tình Cảm", type: "radio", url: `${APP_HOST}/list?category=tinh-cam` },
-                    { text: "Kinh Dị", type: "radio", url: `${APP_HOST}/list?category=kinh-di` },
-                    { text: "Phiêu Lưu", type: "radio", url: `${APP_HOST}/list?category=phieu-luu` },
-                    { text: "Khoa Học Viễn Tưởng", type: "radio", url: `${APP_HOST}/list?category=khoa-hoc-vien-tuong` },
-                    { text: "Tâm Lý", type: "radio", url: `${APP_HOST}/list?category=tam-ly` },
-                    { text: "Chính Kịch", type: "radio", url: `${APP_HOST}/list?category=chinh-kich` },
-                    { text: "Giả Tưởng", type: "radio", url: `${APP_HOST}/list?category=gia-tuong` },
-                    { text: "Gia Đình", type: "radio", url: `${APP_HOST}/list?category=gia-dinh` },
-                    { text: "Chiến Tranh", type: "radio", url: `${APP_HOST}/list?category=chien-tranh` },
-                    { text: "Hình Sự", type: "radio", url: `${APP_HOST}/list?category=hinh-su` },
-                    { text: "Âm Nhạc", type: "radio", url: `${APP_HOST}/list?category=am-nhac` },
-                    { text: "Thể Thao", type: "radio", url: `${APP_HOST}/list?category=the-thao` },
-                    { text: "Bí Ẩn", type: "radio", url: `${APP_HOST}/list?category=bi-an` },
-                    { text: "Lịch Sử", type: "radio", url: `${APP_HOST}/list?category=lich-su` },
-                    { text: "Phim Tài Liệu", type: "radio", url: `${APP_HOST}/list?category=phim-tai-lieu` },
-                    { text: "Phim Ngắn", type: "radio", url: `${APP_HOST}/list?category=phim-ngan` },
-                    { text: "Phim Lẻ", type: "radio", url: `${APP_HOST}/list?category=phim-le` },
-                    { text: "Phim Bộ", type: "radio", url: `${APP_HOST}/list?category=phim-bo` },
-                    { text: "Hoạt Hình", type: "radio", url: `${APP_HOST}/list?category=hoat-hinh` },
-                    { text: "TV Shows", type: "radio", url: `${APP_HOST}/list?category=tv-shows` },
-                ] },
-                { type: "dropdown", text: "Quốc gia", value: [
-                    { text: "Việt Nam", type: "radio", url: `${APP_HOST}/list?country=viet-nam` },
-                    { text: "Trung Quốc", type: "radio", url: `${APP_HOST}/list?country=trung-quoc` },
-                    { text: "Hồng Kông", type: "radio", url: `${APP_HOST}/list?country=hong-kong` },
-                    { text: "Hàn Quốc", type: "radio", url: `${APP_HOST}/list?country=han-quoc` },
-                    { text: "Nhật Bản", type: "radio", url: `${APP_HOST}/list?country=nhat-ban` },
-                    { text: "Mỹ", type: "radio", url: `${APP_HOST}/list?country=my` },
-                    { text: "Anh", type: "radio", url: `${APP_HOST}/list?country=anh` },
-                    { text: "Pháp", type: "radio", url: `${APP_HOST}/list?country=phap` },
-                    { text: "Đức", type: "radio", url: `${APP_HOST}/list?country=duc` },
-                    { text: "Ấn Độ", type: "radio", url: `${APP_HOST}/list?country=an-do` },
-                    { text: "Thái Lan", type: "radio", url: `${APP_HOST}/list?country=thai-lan` },
-                    { text: "Tây Ban Nha", type: "radio", url: `${APP_HOST}/list?country=tay-ban-nha` },
-                    { text: "Ý", type: "radio", url: `${APP_HOST}/list?country=y` },
-                    { text: "Châu Âu", type: "radio", url: `${APP_HOST}/list?country=chau-au` },
-                    { text: "Châu Á", type: "radio", url: `${APP_HOST}/list?country=chau-a` },
-                    { text: "Châu Mỹ", type: "radio", url: `${APP_HOST}/list?country=chau-my` },
-                    { text: "Châu Phi", type: "radio", url: `${APP_HOST}/list?country=chau-phi` },
-                    { text: "Châu Úc", type: "radio", url: `${APP_HOST}/list?country=chau-uc` },
-                ] },
-                { type: "dropdown", text: "Năm", value: [
-                    { text: "2026", type: "radio", url: `${APP_HOST}/list?year=2026` },
-                    { text: "2025", type: "radio", url: `${APP_HOST}/list?year=2025` },
-                    { text: "2024", type: "radio", url: `${APP_HOST}/list?year=2024` },
-                    { text: "2023", type: "radio", url: `${APP_HOST}/list?year=2023` },
-                    { text: "2022", type: "radio", url: `${APP_HOST}/list?year=2022` },
-                    { text: "2021", type: "radio", url: `${APP_HOST}/list?year=2021` },
-                    { text: "2020", type: "radio", url: `${APP_HOST}/list?year=2020` },
-                    { text: "2019", type: "radio", url: `${APP_HOST}/list?year=2019` },
-                    { text: "2018", type: "radio", url: `${APP_HOST}/list?year=2018` },
-                    { text: "2017", type: "radio", url: `${APP_HOST}/list?year=2017` },
-                    { text: "2016", type: "radio", url: `${APP_HOST}/list?year=2016` },
-                    { text: "2015", type: "radio", url: `${APP_HOST}/list?year=2015` },
-                    { text: "2014", type: "radio", url: `${APP_HOST}/list?year=2014` },
-                    { text: "2013", type: "radio", url: `${APP_HOST}/list?year=2013` },
-                    { text: "2012", type: "radio", url: `${APP_HOST}/list?year=2012` },
-                    { text: "2011", type: "radio", url: `${APP_HOST}/list?year=2011` },
-                    { text: "2010", type: "radio", url: `${APP_HOST}/list?year=2010` },
-                    { text: "2009", type: "radio", url: `${APP_HOST}/list?year=2009` },
-                    { text: "2008", type: "radio", url: `${APP_HOST}/list?year=2008` },
-                    { text: "2007", type: "radio", url: `${APP_HOST}/list?year=2007` },
-                    { text: "2006", type: "radio", url: `${APP_HOST}/list?year=2006` },
-                    { text: "2005", type: "radio", url: `${APP_HOST}/list?year=2005` },
-                    { text: "2004", type: "radio", url: `${APP_HOST}/list?year=2004` },
-                    { text: "2003", type: "radio", url: `${APP_HOST}/list?year=2003` },
-                    { text: "2002", type: "radio", url: `${APP_HOST}/list?year=2002` },
-                    { text: "2001", type: "radio", url: `${APP_HOST}/list?year=2001` },
-                    { text: "2000", type: "radio", url: `${APP_HOST}/list?year=2000` },
-                    { text: "1999", type: "radio", url: `${APP_HOST}/list?year=1999` },
-                    { text: "1998", type: "radio", url: `${APP_HOST}/list?year=1998` },
-                    { text: "1997", type: "radio", url: `${APP_HOST}/list?year=1997` },
-                    { text: "1996", type: "radio", url: `${APP_HOST}/list?year=1996` },
-                    { text: "1995", type: "radio", url: `${APP_HOST}/list?year=1995` },
-                    { text: "1994", type: "radio", url: `${APP_HOST}/list?year=1994` },
-                    { text: "1993", type: "radio", url: `${APP_HOST}/list?year=1993` },
-                    { text: "1992", type: "radio", url: `${APP_HOST}/list?year=1992` },
-                    { text: "1991", type: "radio", url: `${APP_HOST}/list?year=1991` },
-                    { text: "1990", type: "radio", url: `${APP_HOST}/list?year=1990` },
-                    { text: "1989", type: "radio", url: `${APP_HOST}/list?year=1989` },
-                    { text: "1988", type: "radio", url: `${APP_HOST}/list?year=1988` },
-                    { text: "1987", type: "radio", url: `${APP_HOST}/list?year=1987` },
-                    { text: "1986", type: "radio", url: `${APP_HOST}/list?year=1986` },
-                    { text: "1985", type: "radio", url: `${APP_HOST}/list?year=1985` },
-                    { text: "1984", type: "radio", url: `${APP_HOST}/list?year=1984` },
-                    { text: "1983", type: "radio", url: `${APP_HOST}/list?year=1983` },
-                    { text: "1982", type: "radio", url: `${APP_HOST}/list?year=1982` },
-                    { text: "1981", type: "radio", url: `${APP_HOST}/list?year=1981` },
-                    { text: "1980", type: "radio", url: `${APP_HOST}/list?year=1980` },
-                    { text: "1979", type: "radio", url: `${APP_HOST}/list?year=1979` },
-                    { text: "1978", type: "radio", url: `${APP_HOST}/list?year=1978` },
-                    { text: "1977", type: "radio", url: `${APP_HOST}/list?year=1977` },
-                    { text: "1976", type: "radio", url: `${APP_HOST}/list?year=1976` },
-                    { text: "1975", type: "radio", url: `${APP_HOST}/list?year=1975` },
-                    { text: "1974", type: "radio", url: `${APP_HOST}/list?year=1974` },
-                    { text: "1973", type: "radio", url: `${APP_HOST}/list?year=1973` },
-                    { text: "1972", type: "radio", url: `${APP_HOST}/list?year=1972` },
-                    { text: "1971", type: "radio", url: `${APP_HOST}/list?year=1971` },
-                    { text: "1970", type: "radio", url: `${APP_HOST}/list?year=1970` },
-                    { text: "1969", type: "radio", url: `${APP_HOST}/list?year=1969` },
-                    { text: "1968", type: "radio", url: `${APP_HOST}/list?year=1968` },
-                    { text: "1967", type: "radio", url: `${APP_HOST}/list?year=1967` },
-                    { text: "1966", type: "radio", url: `${APP_HOST}/list?year=1966` },
-                    { text: "1965", type: "radio", url: `${APP_HOST}/list?year=1965` },
-                    { text: "1964", type: "radio", url: `${APP_HOST}/list?year=1964` },
-                    { text: "1963", type: "radio", url: `${APP_HOST}/list?year=1963` },
-                    { text: "1962", type: "radio", url: `${APP_HOST}/list?year=1962` },
-                    { text: "1961", type: "radio", url: `${APP_HOST}/list?year=1961` },
-                    { text: "1960", type: "radio", url: `${APP_HOST}/list?year=1960` },
-                    { text: "1959", type: "radio", url: `${APP_HOST}/list?year=1959` },
-                    { text: "1958", type: "radio", url: `${APP_HOST}/list?year=1958` },
-                    { text: "1957", type: "radio", url: `${APP_HOST}/list?year=1957` },
-                    { text: "1956", type: "radio", url: `${APP_HOST}/list?year=1956` },
-                    { text: "1955", type: "radio", url: `${APP_HOST}/list?year=1955` },
-                    { text: "1954", type: "radio", url: `${APP_HOST}/list?year=1954` },
-                    { text: "1953", type: "radio", url: `${APP_HOST}/list?year=1953` },
-                    { text: "1952", type: "radio", url: `${APP_HOST}/list?year=1952` },
-                    { text: "1951", type: "radio", url: `${APP_HOST}/list?year=1951` },
-                    { text: "1950", type: "radio", url: `${APP_HOST}/list?year=1950` },
-                    { text: "1949", type: "radio", url: `${APP_HOST}/list?year=1949` },
-                    { text: "1948", type: "radio", url: `${APP_HOST}/list?year=1948` },
-                    { text: "1947", type: "radio", url: `${APP_HOST}/list?year=1947` },
-                    { text: "1946", type: "radio", url: `${APP_HOST}/list?year=1946` },
-                    { text: "1945", type: "radio", url: `${APP_HOST}/list?year=1945` },
-                    { text: "1944", type: "radio", url: `${APP_HOST}/list?year=1944` },
-                    { text: "1943", type: "radio", url: `${APP_HOST}/list?year=1943` },
-                    { text: "1942", type: "radio", url: `${APP_HOST}/list?year=1942` },
-                    { text: "1941", type: "radio", url: `${APP_HOST}/list?year=1941` },
-                    { text: "1940", type: "radio", url: `${APP_HOST}/list?year=1940` },
-                    { text: "1939", type: "radio", url: `${APP_HOST}/list?year=1939` },
-                    { text: "1938", type: "radio", url: `${APP_HOST}/list?year=1938` },
-                    { text: "1937", type: "radio", url: `${APP_HOST}/list?year=1937` },
-                    { text: "1936", type: "radio", url: `${APP_HOST}/list?year=1936` },
-                    { text: "1935", type: "radio", url: `${APP_HOST}/list?year=1935` },
-                    { text: "1934", type: "radio", url: `${APP_HOST}/list?year=1934` },
-                    { text: "1933", type: "radio", url: `${APP_HOST}/list?year=1933` },
-                    { text: "1932", type: "radio", url: `${APP_HOST}/list?year=1932` },
-                    { text: "1931", type: "radio", url: `${APP_HOST}/list?year=1931` },
-                    { text: "1930", type: "radio", url: `${APP_HOST}/list?year=1930` },
-                    { text: "1929", type: "radio", url: `${APP_HOST}/list?year=1929` },
-                    { text: "1928", type: "radio", url: `${APP_HOST}/list?year=1928` },
-                    { text: "1927", type: "radio", url: `${APP_HOST}/list?year=1927` },
-                    { text: "1926", type: "radio", url: `${APP_HOST}/list?year=1926` },
-                    { text: "1925", type: "radio", url: `${APP_HOST}/list?year=1925` },
-                    { text: "1924", type: "radio", url: `${APP_HOST}/list?year=1924` },
-                    { text: "1923", type: "radio", url: `${APP_HOST}/list?year=1923` },
-                    { text: "1922", type: "radio", url: `${APP_HOST}/list?year=1922` },
-                    { text: "1921", type: "radio", url: `${APP_HOST}/list?year=1921` },
-                    { text: "1920", type: "radio", url: `${APP_HOST}/list?year=1920` },
-                    { text: "1919", type: "radio", url: `${APP_HOST}/list?year=1919` },
-                    { text: "1918", type: "radio", url: `${APP_HOST}/list?year=1918` },
-                    { text: "1917", type: "radio", url: `${APP_HOST}/list?year=1917` },
-                    { text: "1916", type: "radio", url: `${APP_HOST}/list?year=1916` },
-                    { text: "1915", type: "radio", url: `${APP_HOST}/list?year=1915` },
-                    { text: "1914", type: "radio", url: `${APP_HOST}/list?year=1914` },
-                    { text: "1913", type: "radio", url: `${APP_HOST}/list?year=1913` },
-                    { text: "1912", type: "radio", url: `${APP_HOST}/list?year=1912` },
-                    { text: "1911", type: "radio", url: `${APP_HOST}/list?year=1911` },
-                    { text: "1910", type: "radio", url: `${APP_HOST}/list?year=1910` },
-                    { text: "1909", type: "radio", url: `${APP_HOST}/list?year=1909` },
-                    { text: "1908", type: "radio", url: `${APP_HOST}/list?year=1908` },
-                    { text: "1907", type: "radio", url: `${APP_HOST}/list?year=1907` },
-                    { text: "1906", type: "radio", url: `${APP_HOST}/list?year=1906` },
-                    { text: "1905", type: "radio", url: `${APP_HOST}/list?year=1905` },
-                    { text: "1904", type: "radio", url: `${APP_HOST}/list?year=1904` },
-                    { text: "1903", type: "radio", url: `${APP_HOST}/list?year=1903` },
-                    { text: "1902", type: "radio", url: `${APP_HOST}/list?year=1902` },
-                    { text: "1901", type: "radio", url: `${APP_HOST}/list?year=1901` },
-                    { text: "1900", type: "radio", url: `${APP_HOST}/list?year=1900` },
-                    { text: "1899", type: "radio", url: `${APP_HOST}/list?year=1899` },
-                    { text: "1898", type: "radio", url: `${APP_HOST}/list?year=1898` },
-                    { text: "1897", type: "radio", url: `${APP_HOST}/list?year=1897` },
-                    { text: "1896", type: "radio", url: `${APP_HOST}/list?year=1896` },
-                    { text: "1895", type: "radio", url: `${APP_HOST}/list?year=1895` },
-                ] },
-                { type: "dropdown", text: "Phân loại", value: [
-                    { text: "Phim bộ", type: "radio", url: `${APP_HOST}/list?type=phim-bo` },
-                    { text: "Phim lẻ", type: "radio", url: `${APP_HOST}/list?type=phim-le` },
-                    { text: "TV Shows", type: "radio", url: `${APP_HOST}/list?type=tv-shows` },
-                    { text: "Hoạt hình", type: "radio", url: `${APP_HOST}/list?type=hoat-hinh` },
-                    { text: "Phim Vietsub", type: "radio", url: `${APP_HOST}/list?type=phim-vietsub` },
-                    { text: "Phim Thuyết Minh", type: "radio", url: `${APP_HOST}/list?type=phim-thuyet-minh` },
-                    { text: "Phim Lồng Tiếng", type: "radio", url: `${APP_HOST}/list?type=phim-long-tieng` },
-                ] },
-            ],
-            grid_number: 1,
-            groups: [],
-            option: {
-                save_history: true,
-                save_search_history: true,
-                save_wishlist: true
-            }
-        };
+const createNguoncRouter = () => {
+    const router = express.Router();
 
-        const addGroup = (id, name, display, items) => {
-            if (items && items.length > 0) {
-                response.groups.push({
+    router.get('/', async (req, res) => {
+        const appHost = getAppHost(req, req.baseUrl);
+        try {
+            const [phimMoi, phimVN, phimTQ, phimUS, phimBo, phimLe, phimHoatHinh, tvShows, phimDangChieu] = await Promise.all([
+                fetchNguoncList(`${NGUONC_API_BASE}/films/phim-moi-cap-nhat`),
+                fetchNguoncList(`${NGUONC_API_BASE}/films/quoc-gia/viet-nam`),
+                fetchNguoncList(`${NGUONC_API_BASE}/films/quoc-gia/trung-quoc`),
+                fetchNguoncList(`${NGUONC_API_BASE}/films/quoc-gia/au-my`),
+                fetchNguoncList(`${NGUONC_API_BASE}/films/danh-sach/phim-bo`),
+                fetchNguoncList(`${NGUONC_API_BASE}/films/danh-sach/phim-le`),
+                fetchNguoncList(`${NGUONC_API_BASE}/films/danh-sach/hoat-hinh`),
+                fetchNguoncList(`${NGUONC_API_BASE}/films/danh-sach/tv-shows`),
+                fetchNguoncList(`${NGUONC_API_BASE}/films/danh-sach/phim-dang-chieu`)
+            ]);
+            
+            const response = {
+                id: "nguonc",
+                name: "NguonC Phim",
+                description: "NguonC Phim - Ứng dụng xem phim chất lượng cao",
+                url: `${appHost}`,
+                color: "#e50914",
+                image: {
+                    url: "https://phim.nguonc.com/public/images/logo.png",
+                    type: "contain",
+                    height: 111,
+                    width: 300
+                },
+                notice: {
+                    id: "notice",
+                    link: "https://phim.nguonc.com",
+                    text: "Dữ liệu cung cấp bởi phim.nguonc.com",
+                    icon: "https://phim.nguonc.com/public/images/logo.png",
+                    closeable: true
+                },
+                search: {
+                    url: `${appHost}/search`,
+                    suggest_url: `${appHost}/suggest`,
+                    search_key: "keyword",
+                    paging: {
+                        page_key: "page",
+                        size_key: "limit"
+                    }
+                },
+                sorts: [
+                    { type: "dropdown", text: "Thể loại", value: [
+                        { text: "Hành Động", type: "radio", url: `${appHost}/list?category=hanh-dong` },
+                        { text: "Phiêu Lưu", type: "radio", url: `${appHost}/list?category=phieu-luu` },
+                        { text: "Hoạt Hình", type: "radio", url: `${appHost}/list?category=hoat-hinh` },
+                        { text: "Hài Hước", type: "radio", url: `${appHost}/list?category=phim-hai` },
+                        { text: "Hình Sự", type: "radio", url: `${appHost}/list?category=hinh-su` },
+                        { text: "Tài Liệu", type: "radio", url: `${appHost}/list?category=tai-lieu` },
+                        { text: "Chính Kịch", type: "radio", url: `${appHost}/list?category=chinh-kich` },
+                        { text: "Gia Đình", type: "radio", url: `${appHost}/list?category=gia-dinh` },
+                        { text: "Giả Tưởng", type: "radio", url: `${appHost}/list?category=gia-tuong` },
+                        { text: "Lịch Sử", type: "radio", url: `${appHost}/list?category=lich-su` },
+                        { text: "Kinh Dị", type: "radio", url: `${appHost}/list?category=kinh-di` },
+                        { text: "Nhạc", type: "radio", url: `${appHost}/list?category=phim-nhac` },
+                        { text: "Bí Ẩn", type: "radio", url: `${appHost}/list?category=bi-an` },
+                        { text: "Lãng Mạn", type: "radio", url: `${appHost}/list?category=lang-man` },
+                        { text: "Khoa Học Viễn Tưởng", type: "radio", url: `${appHost}/list?category=khoa-hoc-vien-tuong` },
+                        { text: "Gây Cấn", type: "radio", url: `${appHost}/list?category=gay-can` },
+                        { text: "Chiến Tranh", type: "radio", url: `${appHost}/list?category=chien-tranh` },
+                        { text: "Tâm Lý", type: "radio", url: `${appHost}/list?category=tam-ly` },
+                        { text: "Tình Cảm", type: "radio", url: `${appHost}/list?category=tinh-cam` },
+                        { text: "Cổ Trang", type: "radio", url: `${appHost}/list?category=co-trang` },
+                        { text: "Miền Tây", type: "radio", url: `${appHost}/list?category=mien-tay` },
+                        // { text: "Phim 18+", type: "radio", url: `${appHost}/list?category=phim-18` }
+                    ] },
+                    { type: "dropdown", text: "Quốc gia", value: [
+                        { text: "Việt Nam", type: "radio", url: `${appHost}/list?country=viet-nam` },
+                        { text: "Âu Mỹ", type: "radio", url: `${appHost}/list?country=au-my` },
+                        { text: "Anh", type: "radio", url: `${appHost}/list?country=anh` },
+                        { text: "Trung Quốc", type: "radio", url: `${appHost}/list?country=trung-quoc` },
+                        { text: "Indonesia", type: "radio", url: `${appHost}/list?country=indonesia` },
+                        { text: "Pháp", type: "radio", url: `${appHost}/list?country=phap` },
+                        { text: "Hồng Kông", type: "radio", url: `${appHost}/list?country=hong-kong` },
+                        { text: "Hàn Quốc", type: "radio", url: `${appHost}/list?country=han-quoc` },
+                        { text: "Nhật Bản", type: "radio", url: `${appHost}/list?country=nhat-ban` },
+                        { text: "Thái Lan", type: "radio", url: `${appHost}/list?country=thai-lan` },
+                        { text: "Đài Loan", type: "radio", url: `${appHost}/list?country=dai-loan` },
+                        { text: "Nga", type: "radio", url: `${appHost}/list?country=nga` },
+                        { text: "Hà Lan", type: "radio", url: `${appHost}/list?country=ha-lan` },
+                        { text: "Philippines", type: "radio", url: `${appHost}/list?country=philippines` },
+                        { text: "Ấn Độ", type: "radio", url: `${appHost}/list?country=an-do` },
+                        { text: "Quốc gia khác", type: "radio", url: `${appHost}/list?country=quoc-gia-khac` }
+                    ] },
+                    { type: "dropdown", text: "Năm", value: [
+                        { text: "2026", type: "radio", url: `${appHost}/list?year=2026` },
+                        { text: "2025", type: "radio", url: `${appHost}/list?year=2025` },
+                        { text: "2024", type: "radio", url: `${appHost}/list?year=2024` },
+                        { text: "2023", type: "radio", url: `${appHost}/list?year=2023` },
+                        { text: "2022", type: "radio", url: `${appHost}/list?year=2022` },
+                        { text: "2021", type: "radio", url: `${appHost}/list?year=2021` },
+                        { text: "2020", type: "radio", url: `${appHost}/list?year=2020` },
+                        { text: "2019", type: "radio", url: `${appHost}/list?year=2019` },
+                        { text: "2018", type: "radio", url: `${appHost}/list?year=2018` },
+                        { text: "2017", type: "radio", url: `${appHost}/list?year=2017` },
+                        { text: "2016", type: "radio", url: `${appHost}/list?year=2016` },
+                        { text: "2015", type: "radio", url: `${appHost}/list?year=2015` },
+                        { text: "2014", type: "radio", url: `${appHost}/list?year=2014` },
+                        { text: "2013", type: "radio", url: `${appHost}/list?year=2013` },
+                        { text: "2012", type: "radio", url: `${appHost}/list?year=2012` },
+                        { text: "2011", type: "radio", url: `${appHost}/list?year=2011` },
+                        { text: "2010", type: "radio", url: `${appHost}/list?year=2010` },
+                        { text: "2009", type: "radio", url: `${appHost}/list?year=2009` },
+                        { text: "2008", type: "radio", url: `${appHost}/list?year=2008` },
+                        { text: "2007", type: "radio", url: `${appHost}/list?year=2007` },
+                        { text: "2006", type: "radio", url: `${appHost}/list?year=2006` },
+                        { text: "2005", type: "radio", url: `${appHost}/list?year=2005` },
+                        { text: "2004", type: "radio", url: `${appHost}/list?year=2004` }
+                    ] },
+                    { type: "dropdown", text: "Phân loại", value: [
+                        { text: "Phim bộ", type: "radio", url: `${appHost}/list?type=phim-bo` },
+                        { text: "Phim lẻ", type: "radio", url: `${appHost}/list?type=phim-le` },
+                        { text: "TV Shows", type: "radio", url: `${appHost}/list?type=tv-shows` },
+                        { text: "Phim đang chiếu", type: "radio", url: `${appHost}/list?type=phim-dang-chieu` }
+                    ] }
+                ],
+                grid_number: 1,
+                groups: [],
+                option: {
+                    save_history: true,
+                    save_search_history: true,
+                    save_wishlist: true
+                }
+            };
+
+            const addGroup = (id, name, display, items) => {
+                if (items && items.length > 0) {
+                    response.groups.push({
+                        id: id,
+                        name: name,
+                        display: display,
+                        enable_detail: true,
+                        grid_number: 1,
+                        channels: items.map(item => formatNguoncChannel(item, false, req, appHost)),
+                        remote_data: {
+                            url: `${appHost}/list?type=${id}`
+                        }
+                    });
+                }
+            };
+
+            addGroup("phim-moi-cap-nhat", "Mới cập nhật", "slider", phimMoi);
+            addGroup("phim-vn", "Phim Việt Nam", "horizontal", phimVN);
+            addGroup("phim-tq", "Phim Trung Quốc", "horizontal", phimTQ);
+            addGroup("phim-us", "Phim Âu Mỹ", "horizontal", phimUS);
+            addGroup("phim-bo", "Phim Bộ", "horizontal", phimBo);
+            addGroup("phim-le", "Phim Lẻ", "horizontal", phimLe);
+            addGroup("phim-hoat-hinh", "Phim Hoạt Hình", "horizontal", phimHoatHinh);
+            addGroup("tv-shows", "TV Shows", "horizontal", tvShows);
+            addGroup("phim-dang-chieu", "Phim Đang Chiếu", "horizontal", phimDangChieu);
+
+            res.json(response);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+
+    router.get('/detail', async (req, res) => {
+        const appHost = getAppHost(req, req.baseUrl);
+        const slug = req.query.slug;
+        if (!slug) return res.status(400).json({ error: "Missing slug parameter" });
+
+        try {
+            const response = await axios.get(`${NGUONC_API_BASE}/film/${slug}`);
+            const data = response.data;
+            if (data.status !== "success" || !data.movie) {
+                 return res.status(404).json({ error: "Movie not found" });
+            }
+
+            const movie = data.movie;
+            const episodes = movie.episodes || [];
+
+            const contents = [];
+            episodes.forEach(server => {
+                const streams = [];
+                if (server.items) {
+                    server.items.forEach(ep => {
+                        if(ep.embed || ep.m3u8){
+                            streams.push({
+                                id: `${server.server_name}-${ep.slug}`,
+                                name: ep.name,
+                                remote_data: {
+                                    url: `${appHost}/stream?slug=${slug}&server=${encodeURIComponent(server.server_name)}&ep=${ep.slug}`
+                                }
+                            });   
+                        }
+                    });
+
+                    contents.push({
+                        id: `${movie.id || movie.slug}-${server.server_name}`,
+                        name: server.server_name,
+                        grid_number: 3,
+                        streams: streams
+                    });
+                }
+            });
+
+            res.json({
+                id: movie.id || movie.slug,
+                name: movie.name,
+                subtitle: movie.original_name || movie.name,
+                description: getNguoncDescription(movie),
+                type: "playlist",
+                display: "text-below",
+                enable_detail: true,
+                image: {
+                    url: getKkphimPosterUrl(movie.thumb_url || movie.poster_url),
+                    type: "cover",
+                    width: 640,
+                    height: 480
+                },
+                remote_data: {
+                    url: `${appHost}/detail?slug=${movie.slug}`
+                },
+                share: {
+                    url: `${appHost}/detail?slug=${movie.slug}`
+                },
+                sources: [
+                    {
+                        id: movie.id || movie.slug,
+                        name: "Nguồn",
+                        contents: contents
+                    }
+                ]
+            });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+
+    router.get('/stream', async (req, res) => {
+        const slug = req.query.slug;
+        const server = req.query.server;
+        const ep = req.query.ep;
+        const start_time = req.query.start_time || 0;
+        
+        if (!slug) return res.status(400).json({ error: "Missing slug parameter" });
+        if (!server) return res.status(400).json({ error: "Missing server parameter" });
+        if (!ep) return res.status(400).json({ error: "Missing episode parameter" });
+
+        try {
+            const response = await axios.get(`${NGUONC_API_BASE}/film/${slug}`);
+            const data = response.data;
+            if (data.status !== "success" || !data.movie) {
+                 return res.status(404).json({ error: "Movie not found" });
+            }
+
+            const movie = data.movie;
+            const episodes = movie.episodes || [];
+            let id = "";
+            let name = "";
+            let embedUrl = "";
+            let fallbackM3u8 = "";
+            
+            for(let i = 0; i < episodes.length; i++){
+                let item = episodes[i];
+                if(item.items?.length > 0 && item.server_name === server){
+                    for(let j = 0; j < item.items.length; j++){
+                        let epItem = item.items[j];
+                        if(epItem.slug === ep){
+                            id = epItem.slug;
+                            name = epItem.name;
+                            embedUrl = epItem.embed || "";
+                            fallbackM3u8 = epItem.m3u8 || "";
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            let stream_url = embedUrl || fallbackM3u8;
+            let stream_type = embedUrl ? "webview" : "hls";
+            let video_hash = "";
+            
+            if (embedUrl) {
+                // Fetch the embed link and extract the real HLS stream
+                const resolved = await resolveNguoncStream(embedUrl);
+                if (resolved && resolved.url) {
+                    stream_url = resolved.url;
+                    stream_type = "hls";
+                    video_hash = resolved.hash;
+                    console.log(`[NguonC Stream Resolver] Successfully resolved native HLS for slug "${slug}" ep "${ep}": ${resolved.url}`);
+                } else {
+                    console.log(`[NguonC Stream Resolver] Failed to resolve native HLS for slug "${slug}" ep "${ep}". Falling back to embed webview.`);
+                }
+            }
+            
+            res.json({
+                stream_links: [{
                     id: id,
                     name: name,
-                    display: display,
-                    enable_detail: true,
-                    grid_number: 1,
-                    channels: items.map(item => formatChannel(item, false, req)),
+                    url: stream_url,
+                    type: stream_type,
+                    start_time: Number.parseInt(start_time),
+                    video_hash: video_hash,
+                    default: false
+                }]
+            });
+        } catch (error) {
+             console.error(error);
+             res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+
+    router.get('/search', async (req, res) => {
+        const appHost = getAppHost(req, req.baseUrl);
+        const keyword = req.query.keyword;
+        if (!keyword) return res.status(400).json({ error: "Missing keyword parameter" });
+        const page = req.query.page || 1;
+
+        try {
+            const response = await axios.get(`${NGUONC_API_BASE}/films/search?keyword=${encodeURIComponent(keyword)}&page=${page}`);
+            const data = response.data;
+            const items = data.items || [];
+            const paginate = data.paginate || {};
+            
+            res.json({
+                grid_number: 3,
+                groups: [
+                    {
+                        id: "near-matches",
+                        name: `Kết quả tìm kiếm: ${keyword} (${paginate.total_items ?? 0})`,
+                        display: "vertical",
+                        enable_detail: true,
+                        grid_number: 3,
+                        channels: items.map(item => formatNguoncChannel(item, false, req, appHost)),
+                    }
+                ],
+                load_more: {
                     remote_data: {
-                        url: `${APP_HOST}/list?type=${id}`
-                    }
-                });
-            }
-        };
-
-        addGroup("phim-moi-cap-nhat", "Mới cập nhật", "slider", phimMoi.items);
-        addGroup("phim-bo", "Phim Bộ", "horizontal", phimBo.items);
-        addGroup("phim-le", "Phim Lẻ", "horizontal", phimLe.items);
-        addGroup("hoat-hinh", "Hoạt Hình", "horizontal", hoatHinh.items);
-        addGroup("tv-shows", "TV Shows", "horizontal", tvShows.items);
-        addGroup("phim-vietsub", "Phim Vietsub", "horizontal", phimVietsub.items);
-        addGroup("phim-thuyet-minh", "Phim Thuyết Minh", "horizontal", phimThuyetMinh.items);
-        addGroup("phim-long-tieng", "Phim Lồng Tiếng", "horizontal", phimLongTieng.items);
-
-        res.json(response);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-// 2. GET /detail?slug=...
-app.get('/detail', async (req, res) => {
-    const slug = req.query.slug;
-    if (!slug) return res.status(400).json({ error: "Missing slug parameter" });
-
-    try {
-        const response = await axios.get(`${API_BASE}/phim/${slug}`);
-        const data = response.data;
-        if (!data.status) {
-             return res.status(404).json({ error: "Movie not found" });
-        }
-
-        const movie = data.movie;
-        const episodes = data.episodes || [];
-
-        const contents = [];
-        episodes.forEach(server => {
-            const streams = [];
-            if (server.server_data) {
-                server.server_data.forEach(ep => {
-                    if(ep.link_embed || ep.link_m3u8 || ep.link_m3u){
-                        streams.push({
-                            id: `${server.server_name}-${ep.slug}`,
-                            name: ep.name,
-                            // image: {
-                            //     url: getPosterUrl(movie.thumb_url || movie.poster_url),
-                            //     type: "contain",
-                            //     width: 128,
-                            //     height: 72
-                            // },
-                            remote_data: {
-                                url: `${APP_HOST}/stream?slug=${slug}&server=${encodeURIComponent(server.server_name)}&ep=${ep.slug}`
-                            }
-                        });   
-                    }
-                });
-
-                contents.push({
-                    id: `${movie._id || movie.slug}-${server.server_name}`,
-                    name: server.server_name,
-                    grid_number: 3,
-                    streams: streams
-                });
-            }
-        });
-
-        res.json({
-            id: movie._id || movie.slug,
-            name: movie.name,
-            subtitle: movie.origin_name || movie.name,
-            description: getDescription(movie),
-            type: "playlist",
-            display: "text-below",
-            enable_detail: true,
-            image: {
-                url: getPosterUrl(movie.thumb_url || movie.poster_url),
-                type: "cover",
-                width: 640,
-                height: 480
-            },
-            remote_data: {
-                url: `${APP_HOST}/detail?slug=${movie.slug}`
-            },
-            share: {
-                url: `${APP_HOST}/detail?slug=${movie.slug}`
-            },
-            sources: [
-                {
-                    id: movie._id || movie.slug,
-                    name: "Nguồn",
-                    contents: contents
-                }
-            ]
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-app.get('/stream', async (req, res) => {
-    const slug = req.query.slug;
-    const server = req.query.server;
-    const ep = req.query.ep;
-    const start_time = req.query.start_time || 0;
-    
-    if (!slug) return res.status(400).json({ error: "Missing slug parameter" });
-    if (!server) return res.status(400).json({ error: "Missing server parameter" });
-    if (!ep) return res.status(400).json({ error: "Missing episode parameter" });
-
-    try {
-        const response = await axios.get(`${API_BASE}/phim/${slug}`);
-        const data = response.data;
-        if (!data.status) {
-             return res.status(404).json({ error: "Movie not found" });
-        }
-
-        const movie = data.movie;
-        const episodes = data.episodes || [];
-        let id = "";
-        let name = "";
-        let stream_url = "";
-        let stream_type = "hls";
-        for(let i = 0; i < episodes.length; i++){
-            let item = episodes[i];
-            if(item.server_data?.length > 0 && item.server_name == server){
-                for(let j = 0; j < item.server_data.length; j++){
-                    let epItem = item.server_data[j];
-                    if(epItem.slug == ep){
-                        id = epItem.slug;
-                        name = epItem.name;
-                        stream_url = epItem.link_m3u8 || epItem.link_embed;
-                        stream_type = epItem.link_m3u8 ? "hls" : "webview";
-                        break;
+                        url: `${appHost}/search?keyword=${encodeURIComponent(keyword)}`
+                    },
+                    pageInfo: {
+                        current_page: paginate.current_page ?? page,
+                        total: paginate.total_items ?? 0,
+                        per_page: paginate.items_per_page ?? 10,
+                        last_page: paginate.total_page ?? page
+                    },
+                    paging: {
+                        page_key: "page",
+                        size_key: "limit"
                     }
                 }
-            }
+            });
+        } catch (error) {
+             console.error(error);
+             res.status(500).json({ error: "Internal Server Error" });
         }
-        
-        res.json({
-            stream_links: [{
-                id: id,
-                name: name,
-                url: stream_url,
-                type: stream_type,
-                start_time: Number.parseInt(start_time),
-                default: false
-            }]
-        });
-    } catch (error) {
-         console.error(error);
-         res.status(500).json({ error: "Internal Server Error" });
-    }
-});
+    });
 
-// 3. GET /search?keyword=...
-app.get('/search', async (req, res) => {
-    const keyword = req.query.keyword;
-    if (!keyword) return res.status(400).json({ error: "Missing keyword parameter" });
-    const limit = req.query.limit || 24;
-    const page = req.query.page || 1;
-    const sortType = req.query.sort_type || 'desc';
-    const sortField = req.query.sort_field || '_id';
+    router.get('/suggest', async (req, res) => {
+        const keyword = req.query.keyword;
+        if (!keyword) return res.status(400).json({ error: "Missing keyword parameter" });
 
-    try {
-        const { items, pagination }  = await fetchList(`${API_BASE}/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&limit=${limit}&page=${page}&sort_field=${sortField}&sort_type=${sortType}`);
-        
-        res.json({
-            grid_number: 3,
-            groups: [
-                {
-                    id: "near-matches",
-                    name: `Kết quả tìm kiếm: ${keyword} (${pagination?.totalItems ?? 0})`,
-                    display: "vertical",
-                    enable_detail: true,
-                    grid_number: 3,
-                    channels: items.map(item => formatChannel(item, false, req)),
-                }
-            ],
-            load_more: {
-                remote_data: {
-                    url: `${APP_HOST}/search?keyword=${encodeURIComponent(keyword)}`
-                },
-                pageInfo: {
-                    current_page: pagination.currentPage ?? page,
-                    total: pagination.totalItems ?? 0,
-                    per_page: pagination.totalItemsPerPage ?? limit,
-                    last_page: pagination.totalPages ?? page
-                },
-                paging: {
-                    page_key: "page",
-                    size_key: "limit"
-                }
-            }
-        });
-    } catch (error) {
-         console.error(error);
-         res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-app.get('/suggest', async (req, res) => {
-    const keyword = req.query.keyword;
-    if (!keyword) return res.status(400).json({ error: "Missing keyword parameter" });
-
-    try {
-        const { items }  = await fetchList(`${API_BASE}/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`);
-        
-        res.json(items.map(item => item.name));
-    } catch (error) {
-         console.error(error);
-         res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-// 4. GET /list?type=...
-app.get('/list', async (req, res) => {
-    const type = req.query.type;
-    const page = req.query.page || 1;
-    const limit = req.query.limit || 24;
-    const category = req.query.category;
-    const country = req.query.country;
-    const year = req.query.year;
-    const sortField = req.query.sort_field || '_id';
-    const sortType = req.query.sort_type || 'desc';
-
-    try {
-        let url = `${API_BASE}/v1/api/danh-sach/${type}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-        let remote_url = `${APP_HOST}/list?type=${type}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-        if(country && !type){
-            url = `${API_BASE}/v1/api/quoc-gia/${country}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            remote_url = `${APP_HOST}/list?country=${country}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+        try {
+            const response = await axios.get(`${NGUONC_API_BASE}/films/search?keyword=${encodeURIComponent(keyword)}`);
+            const data = response.data;
+            const items = data.items || [];
+            res.json(items.map(item => item.name));
+        } catch (error) {
+             console.error(error);
+             res.status(500).json({ error: "Internal Server Error" });
         }
-        else if(category && !type){
-            url = `${API_BASE}/v1/api/the-loai/${category}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            remote_url = `${APP_HOST}/list?category=${category}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-        }
-        else if(year && !type){
-            url = `${API_BASE}/v1/api/nam/${year}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            remote_url = `${APP_HOST}/list?year=${year}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-        }
-        else{
-            if(!type){
-                type = "phim-moi-cap-nhat-v3";
-            }
-            url = `${API_BASE}/v1/api/danh-sach/${type}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            remote_url = `${APP_HOST}/list?type=${type}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            if (category){
-                url += `&category=${category}`;
-                remote_url += `&category=${category}`;
-            } 
-            if (country){
-                url += `&country=${country}`;
+    });
+
+    router.get('/list', async (req, res) => {
+        const appHost = getAppHost(req, req.baseUrl);
+        const type = req.query.type;
+        const page = req.query.page || 1;
+        const limit = req.query.limit || 10;
+        const category = req.query.category;
+        const country = req.query.country;
+        const year = req.query.year;
+
+        try {
+            let url = `${NGUONC_API_BASE}/films/phim-moi-cap-nhat?page=${page}`;
+            let remote_url = `${appHost}/list?limit=${limit}`;
+
+            if (country) {
+                url = `${NGUONC_API_BASE}/films/quoc-gia/${country}?page=${page}`;
                 remote_url += `&country=${country}`;
-            } 
-            if (year){
-                url += `&year=${year}`;
+            } else if (category) {
+                url = `${NGUONC_API_BASE}/films/the-loai/${category}?page=${page}`;
+                remote_url += `&category=${category}`;
+            } else if (year) {
+                url = `${NGUONC_API_BASE}/films/nam-phat-hanh/${year}?page=${page}`;
                 remote_url += `&year=${year}`;
-            } 
-        }
-
-        const { items, pagination } = await fetchList(url);
-
-        res.json({
-            grid_number: 3,
-            enable_detail: true,
-            channels: items.map(item => formatChannel(item, false, req)),
-            load_more: {
-                remote_data: {
-                    url: remote_url
-                },
-                pageInfo: {
-                    current_page: pagination.currentPage,
-                    total: pagination.totalItems,
-                    per_page: pagination.totalItemsPerPage,
-                    last_page: pagination.totalPages
-                },
-                paging: {
-                    page_key: "page",
-                    size_key: "limit"
-                }
+            } else if (type) {
+                url = `${NGUONC_API_BASE}/films/danh-sach/${type}?page=${page}`;
+                remote_url += `&type=${type}`;
+            } else {
+                remote_url += `&type=phim-moi-cap-nhat`;
             }
-        });
-    } catch (error) {
-         console.error(error);
-         res.status(500).json({ error: "Internal Server Error" });
-    }
-});
 
+            const response = await axios.get(url);
+            const data = response.data;
+            const items = data.items || [];
+            const paginate = data.paginate || {};
+
+            res.json({
+                grid_number: 3,
+                enable_detail: true,
+                channels: items.map(item => formatNguoncChannel(item, false, req, appHost)),
+                load_more: {
+                    remote_data: {
+                        url: remote_url
+                    },
+                    pageInfo: {
+                        current_page: paginate.current_page ?? page,
+                        total: paginate.total_items ?? 0,
+                        per_page: paginate.items_per_page ?? limit,
+                        last_page: paginate.total_page ?? page
+                    },
+                    paging: {
+                        page_key: "page",
+                        size_key: "limit"
+                    }
+                }
+            });
+        } catch (error) {
+             console.error(error);
+             res.status(500).json({ error: "Internal Server Error" });
+        }
+    });
+
+    return router;
+};
+
+// ==========================================
+// EXPRESS MOUNTING & INITIALIZATION
+// ==========================================
+const kkphimRouter = createKkphimRouter();
+const nguoncRouter = createNguoncRouter();
+
+// 1. Mount prefix routes
+app.use('/kkphim', kkphimRouter);
+app.use('/nguonc', nguoncRouter);
+
+// 2. Mount root fallback (pointing to KKPhim for backward compatibility)
+app.use('/', kkphimRouter);
+
+const APP_PORT = 3005;
 const PORT = process.env.PORT || APP_PORT;
 app.listen(PORT, () => {
-    console.log(`MonPlayer API Proxy is running on port ${PORT}`);
+    console.log(`MonPlayer Dual API Proxy is running on port ${PORT}`);
+    console.log(`- KKPhim API active at http://localhost:${PORT}/kkphim (and fallback at /)`);
+    console.log(`- NguonC API active at http://localhost:${PORT}/nguonc`);
 });

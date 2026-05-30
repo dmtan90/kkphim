@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+.git
+.github
+.gitignore
+README.md
+LICENSE
+verify_routes.js
+deploy-cloud-run-local.cmd
