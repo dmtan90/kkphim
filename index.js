@@ -9,7 +9,8 @@ app.use(cors());
 const getAppHost = (req, prefix = '') => {
     const host = req.get('host');
     const protocol = req.protocol;
-    return `${protocol}://${host}${prefix}`;
+    // console.log(protocol, host);
+    return `https://${host}${prefix}`;
 };
 
 // ==========================================
@@ -17,10 +18,13 @@ const getAppHost = (req, prefix = '') => {
 // ==========================================
 const KKPHIM_API_BASE = 'https://phimapi.com';
 
-const getKkphimPosterUrl = (path) => {
+const getPhimPosterUrl = (path) => {
     if (!path) return "";
     if (path.includes("phimimg.com")) {
         return `https://phimapi.com/image.php?url=${path}`;
+    }
+    else if(!path.startsWith("http")){
+        return `https://phimapi.com/image.php?url=https://phimimg.com/${path}`;
     }
     return path;
 };
@@ -36,12 +40,12 @@ const formatKkphimChannel = (item, landscape = true, req, appHost) => {
         id: item.slug,
         name: item.name,
         subtitle: item.origin_name,
-        description: item.content || item.origin_name || item.name,
+        description: getPhimDescription(item),
         type: "playlist",
         display: "text-below",
         enable_detail: true,
         image: {
-            url: getKkphimPosterUrl(poster_url),
+            url: getPhimPosterUrl(poster_url),
             type: "cover",
             width: width,
             height: height
@@ -55,33 +59,6 @@ const formatKkphimChannel = (item, landscape = true, req, appHost) => {
     };
 };
 
-function getKkphimDescription(movie) {
-  const { description, content, lang } = movie;
-
-  if (content) {
-    return content;
-  }
-
-  if (description) {
-    return description;
-  }
-
-  const country = lang?.country
-    ? (typeof lang.country === 'string'
-        ? lang.country
-        : Array.isArray(lang.country)
-        ? lang.country[0]
-        : '')
-    : '';
-
-  const category = (Array.isArray(movie.category)
-    ? movie.category
-    : []
-  ).join(', ');
-
-  return `Xem phim ${movie.name} (${movie.origin_name || 'đang cập nhật'}) - ${country} ${category}`;
-}
-
 const fetchKkphimList = async (url) => {
     try {
         const response = await axios.get(url);
@@ -93,8 +70,8 @@ const fetchKkphimList = async (url) => {
             items = data.data.items;
             pagination = data.data.params?.pagination ?? {};
         } else if (data.items && Array.isArray(data.items)) {
-            items = data.items; 
-            pagination = data.params?.pagination ?? {};
+            items = data.items;
+            pagination = data.pagination ?? {};
         } else if (Array.isArray(data)) {
             items = data;
         }
@@ -112,17 +89,17 @@ const createKkphimRouter = () => {
         const appHost = getAppHost(req, req.baseUrl);
         try {
             const [phimMoi, phimVN, phimTQ, phimUS, phimBo, phimLe, hoatHinh, tvShows, phimVietsub, phimLongTieng, phimThuyetMinh] = await Promise.all([
-                fetchKkphimList(`${KKPHIM_API_BASE}/danh-sach/phim-moi-cap-nhat?page=1`),
-                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/quoc-gia/viet-nam?page=1`),
-                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/quoc-gia/trung-quoc?page=1`),
-                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/quoc-gia/au-my?page=1`),
-                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-bo?page=1`),
-                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-le?page=1`),
-                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/hoat-hinh?page=1`),
-                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/tv-shows?page=1`),
-                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-vietsub?page=1`),
-                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-long-tieng?page=1`),
-                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-thuyet-minh?page=1`)
+                fetchKkphimList(`${KKPHIM_API_BASE}/danh-sach/phim-moi-cap-nhat`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/quoc-gia/viet-nam`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/quoc-gia/trung-quoc`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/quoc-gia/au-my`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-bo`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-le`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/hoat-hinh`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/tv-shows`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-vietsub`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-long-tieng`),
+                fetchKkphimList(`${KKPHIM_API_BASE}/v1/api/danh-sach/phim-thuyet-minh`)
             ]);
             
             const response = {
@@ -236,7 +213,7 @@ const createKkphimRouter = () => {
                 }
             };
 
-            const addGroup = (id, name, display, items) => {
+            const addGroup = (id, name, display, items, type = '', country = '', year = '') => {
                 if (items && items.length > 0) {
                     response.groups.push({
                         id: id,
@@ -245,24 +222,24 @@ const createKkphimRouter = () => {
                         enable_detail: true,
                         grid_number: 1,
                         channels: items.map(item => formatKkphimChannel(item, false, req, appHost)),
-                        remote_data: {
-                            url: `${appHost}/list?type=${id}`
-                        }
+                        remote_data: type || country || year ? {
+                            url: `${appHost}/list?type=${type}&country=${country}&year=${year}`
+                        } : null
                     });
                 }
             };
 
-            addGroup("phim-moi-cap-nhat", "Mới cập nhật", "slider", phimMoi.items);
-            addGroup("viet-nam", "Phim Việt Nam", "horizontal", phimVN.items);
-            addGroup("trung-quoc", "Phim Trung Quốc", "horizontal", phimTQ.items);
-            addGroup("au-my", "Âu Mỹ", "horizontal", phimUS.items);
-            addGroup("phim-bo", "Phim Bộ", "horizontal", phimBo.items);
-            addGroup("phim-le", "Phim Lẻ", "horizontal", phimLe.items);
-            addGroup("hoat-hinh", "Hoạt Hình", "horizontal", hoatHinh.items);
-            addGroup("tv-shows", "TV Shows", "horizontal", tvShows.items);
-            addGroup("phim-vietsub", "Phim Vietsub", "horizontal", phimVietsub.items);
-            addGroup("phim-thuyet-minh", "Phim Thuyết Minh", "horizontal", phimThuyetMinh.items);
-            addGroup("phim-long-tieng", "Phim Lồng Tiếng", "horizontal", phimLongTieng.items);
+            addGroup("phim-moi-cap-nhat", "Mới cập nhật", "slider", phimMoi.items, 'phim-moi-cap-nhat');
+            addGroup("viet-nam", "Phim Việt Nam", "horizontal", phimVN.items, '', 'viet-nam');
+            addGroup("trung-quoc", "Phim Trung Quốc", "horizontal", phimTQ.items, '', 'trung-quoc');
+            addGroup("au-my", "Âu Mỹ", "horizontal", phimUS.items, '', 'au-my');
+            addGroup("phim-bo", "Phim Bộ", "horizontal", phimBo.items, 'phim-bo');
+            addGroup("phim-le", "Phim Lẻ", "horizontal", phimLe.items, 'phim-le');
+            addGroup("hoat-hinh", "Hoạt Hình", "horizontal", hoatHinh.items, 'hoat-hinh');
+            addGroup("tv-shows", "TV Shows", "horizontal", tvShows.items, 'tv-shows');
+            addGroup("phim-vietsub", "Phim Vietsub", "horizontal", phimVietsub.items, 'phim-vietsub');
+            addGroup("phim-thuyet-minh", "Phim Thuyết Minh", "horizontal", phimThuyetMinh.items, 'phim-thuyet-minh');
+            addGroup("phim-long-tieng", "Phim Lồng Tiếng", "horizontal", phimLongTieng.items, 'phim-long-tieng');
 
             res.json(response);
         } catch (error) {
@@ -315,12 +292,12 @@ const createKkphimRouter = () => {
                 id: movie._id || movie.slug,
                 name: movie.name,
                 subtitle: movie.origin_name || movie.name,
-                description: getKkphimDescription(movie),
+                description: getPhimDescription(movie),
                 type: "playlist",
                 display: "text-below",
                 enable_detail: true,
                 image: {
-                    url: getKkphimPosterUrl(movie.thumb_url || movie.poster_url),
+                    url: getPhimPosterUrl(movie.thumb_url || movie.poster_url),
                     type: "cover",
                     width: 640,
                     height: 480
@@ -461,7 +438,7 @@ const createKkphimRouter = () => {
 
     router.get('/list', async (req, res) => {
         const appHost = getAppHost(req, req.baseUrl);
-        let type = req.query.type;
+        let type = req.query.type || "";
         const page = req.query.page || 1;
         const limit = req.query.limit || 24;
         const category = req.query.category;
@@ -469,14 +446,13 @@ const createKkphimRouter = () => {
         const year = req.query.year;
         const sortField = req.query.sort_field || '_id';
         const sortType = req.query.sort_type || 'desc';
+        if(!type && !category && !country && !year){
+            type = "phim-moi-cap-nhat";
+        }
 
         try {
             let url = `${KKPHIM_API_BASE}/v1/api/danh-sach/${type}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            let remote_url = `${appHost}/list?limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-            
-            if (type) {
-                remote_url += `&type=${type}`;
-            }
+            let remote_url = `${appHost}/list?type=${type}&page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
 
             if(country && !type){
                 url = `${KKPHIM_API_BASE}/v1/api/quoc-gia/${country}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
@@ -490,12 +466,11 @@ const createKkphimRouter = () => {
                 url = `${KKPHIM_API_BASE}/v1/api/nam/${year}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
                 remote_url += `&year=${year}`;
             }
+            else if(type && type.includes('phim-moi-cap-nhat')){
+                url = `${KKPHIM_API_BASE}/danh-sach/${type}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
+            }
             else{
-                if(!type){
-                    type = "phim-moi-cap-nhat-v3";
-                }
-                url = `${KKPHIM_API_BASE}/v1/api/danh-sach/${type}?page=${page}&limit=${limit}&sort_field=${sortField}&sort_type=${sortType}`;
-                remote_url += `&type=${type}`;
+                // remote_url += `&type=${type}`;
                 if (category){
                     url += `&category=${category}`;
                     remote_url += `&category=${category}`;
@@ -587,12 +562,12 @@ const formatNguoncChannel = (item, landscape = true, req, appHost) => {
         id: item.slug,
         name: item.name,
         subtitle: item.original_name,
-        description: getNguoncDescription(item),
+        description: getPhimDescription(item),
         type: "playlist",
         display: "text-below",
         enable_detail: true,
         image: {
-            url: getKkphimPosterUrl(poster_url), // getKkphimPosterUrl handles http prefix correctly
+            url: getPhimPosterUrl(poster_url), // getPhimPosterUrl handles http prefix correctly
             type: "cover",
             width: width,
             height: height
@@ -606,7 +581,7 @@ const formatNguoncChannel = (item, landscape = true, req, appHost) => {
     };
 };
 
-function getNguoncDescription(movie) {
+function getPhimDescription(movie) {
   const { description, original_name } = movie;
   if (description) {
     return description.replace(/<[^>]*>/g, '').trim();
@@ -629,10 +604,23 @@ function getNguoncDescription(movie) {
 const fetchNguoncList = async (url) => {
     try {
         const response = await axios.get(url);
-        return response.data?.items || [];
+        const data = response.data;
+        
+        let items = [];
+        let pagination = {};
+        if (data.data && Array.isArray(data.data.items)) {
+            items = data.data.items;
+            pagination = data.data.params?.paginate ?? {};
+        } else if (data.items && Array.isArray(data.items)) {
+            items = data.items;
+            pagination = data.paginate ?? {};
+        } else if (Array.isArray(data)) {
+            items = data;
+        }
+        return {items, pagination};
     } catch (error) {
         console.error(`Error fetching ${url}:`, error.message);
-        return [];
+        return {items: [], pagination: {}};
     }
 };
 
@@ -659,9 +647,9 @@ const createNguoncRouter = () => {
                 name: "NguonC Phim",
                 description: "NguonC Phim - Ứng dụng xem phim chất lượng cao",
                 url: `${appHost}`,
-                color: "#e50914",
+                color: "#2c70b0",
                 image: {
-                    url: "https://phim.nguonc.com/public/images/logo.png",
+                    url: "https://phim.nguonc.com/public/images/Logo/logonc.png",
                     type: "contain",
                     height: 111,
                     width: 300
@@ -669,8 +657,8 @@ const createNguoncRouter = () => {
                 notice: {
                     id: "notice",
                     link: "https://phim.nguonc.com",
-                    text: "Dữ liệu cung cấp bởi phim.nguonc.com",
-                    icon: "https://phim.nguonc.com/public/images/logo.png",
+                    text: "Info",
+                    icon: "https://phim.nguonc.com/public/images/Logo/logonc.png",
                     closeable: true
                 },
                 search: {
@@ -766,7 +754,7 @@ const createNguoncRouter = () => {
                 }
             };
 
-            const addGroup = (id, name, display, items) => {
+            const addGroup = (id, name, display, items, type = '', country = '', year = '') => {
                 if (items && items.length > 0) {
                     response.groups.push({
                         id: id,
@@ -775,22 +763,22 @@ const createNguoncRouter = () => {
                         enable_detail: true,
                         grid_number: 1,
                         channels: items.map(item => formatNguoncChannel(item, false, req, appHost)),
-                        remote_data: {
-                            url: `${appHost}/list?type=${id}`
-                        }
+                        remote_data: type || country || year ? {
+                            url: `${appHost}/list?type=${type}&country=${country}&year=${year}`
+                        } : null
                     });
                 }
             };
 
-            addGroup("phim-moi-cap-nhat", "Mới cập nhật", "slider", phimMoi);
-            addGroup("phim-vn", "Phim Việt Nam", "horizontal", phimVN);
-            addGroup("phim-tq", "Phim Trung Quốc", "horizontal", phimTQ);
-            addGroup("phim-us", "Phim Âu Mỹ", "horizontal", phimUS);
-            addGroup("phim-bo", "Phim Bộ", "horizontal", phimBo);
-            addGroup("phim-le", "Phim Lẻ", "horizontal", phimLe);
-            addGroup("phim-hoat-hinh", "Phim Hoạt Hình", "horizontal", phimHoatHinh);
-            addGroup("tv-shows", "TV Shows", "horizontal", tvShows);
-            addGroup("phim-dang-chieu", "Phim Đang Chiếu", "horizontal", phimDangChieu);
+            addGroup("phim-moi-cap-nhat", "Mới cập nhật", "slider", phimMoi.items, 'phim-moi-cap-nhat');
+            addGroup("phim-vn", "Phim Việt Nam", "horizontal", phimVN.items, '', 'viet-nam');
+            addGroup("phim-tq", "Phim Trung Quốc", "horizontal", phimTQ.items, '', 'trung-quoc');
+            addGroup("phim-us", "Phim Âu Mỹ", "horizontal", phimUS.items, '', 'au-my');
+            addGroup("phim-bo", "Phim Bộ", "horizontal", phimBo.items, 'phim-bo');
+            addGroup("phim-le", "Phim Lẻ", "horizontal", phimLe.items, 'phim-le');
+            addGroup("phim-hoat-hinh", "Phim Hoạt Hình", "horizontal", phimHoatHinh.items, 'hoat-hinh');
+            addGroup("tv-shows", "TV Shows", "horizontal", tvShows.items, 'tv-shows');
+            addGroup("phim-dang-chieu", "Phim Đang Chiếu", "horizontal", phimDangChieu.items, 'phim-dang-chieu');
 
             res.json(response);
         } catch (error) {
@@ -843,12 +831,12 @@ const createNguoncRouter = () => {
                 id: movie.id || movie.slug,
                 name: movie.name,
                 subtitle: movie.original_name || movie.name,
-                description: getNguoncDescription(movie),
+                description: getPhimDescription(movie),
                 type: "playlist",
                 display: "text-below",
                 enable_detail: true,
                 image: {
-                    url: getKkphimPosterUrl(movie.thumb_url || movie.poster_url),
+                    url: getPhimPosterUrl(movie.thumb_url || movie.poster_url),
                     type: "cover",
                     width: 640,
                     height: 480
@@ -954,11 +942,7 @@ const createNguoncRouter = () => {
         const page = req.query.page || 1;
 
         try {
-            const response = await axios.get(`${NGUONC_API_BASE}/films/search?keyword=${encodeURIComponent(keyword)}&page=${page}`);
-            const data = response.data;
-            const items = data.items || [];
-            const paginate = data.paginate || {};
-            
+            const { items, pagination: paginate }  = await fetchNguoncList(`${NGUONC_API_BASE}/films/search?keyword=${encodeURIComponent(keyword)}&page=${page}`);
             res.json({
                 grid_number: 3,
                 groups: [
@@ -998,9 +982,7 @@ const createNguoncRouter = () => {
         if (!keyword) return res.status(400).json({ error: "Missing keyword parameter" });
 
         try {
-            const response = await axios.get(`${NGUONC_API_BASE}/films/search?keyword=${encodeURIComponent(keyword)}`);
-            const data = response.data;
-            const items = data.items || [];
+            const { items }  = await fetchNguoncList(`${NGUONC_API_BASE}/films/search?keyword=${encodeURIComponent(keyword)}`);
             res.json(items.map(item => item.name));
         } catch (error) {
              console.error(error);
@@ -1010,16 +992,19 @@ const createNguoncRouter = () => {
 
     router.get('/list', async (req, res) => {
         const appHost = getAppHost(req, req.baseUrl);
-        const type = req.query.type;
+        let type = req.query.type || "";
         const page = req.query.page || 1;
         const limit = req.query.limit || 10;
         const category = req.query.category;
         const country = req.query.country;
         const year = req.query.year;
+        if(!category && !country && !year && !type){
+            type = "phim-moi-cap-nhat";
+        }
 
         try {
-            let url = `${NGUONC_API_BASE}/films/phim-moi-cap-nhat?page=${page}`;
-            let remote_url = `${appHost}/list?limit=${limit}`;
+            let url = `${NGUONC_API_BASE}/films/${type}?page=${page}`;
+            let remote_url = `${appHost}/list?type=${type}&limit=${limit}&page=${page}`;
 
             if (country) {
                 url = `${NGUONC_API_BASE}/films/quoc-gia/${country}?page=${page}`;
@@ -1030,18 +1015,24 @@ const createNguoncRouter = () => {
             } else if (year) {
                 url = `${NGUONC_API_BASE}/films/nam-phat-hanh/${year}?page=${page}`;
                 remote_url += `&year=${year}`;
-            } else if (type) {
-                url = `${NGUONC_API_BASE}/films/danh-sach/${type}?page=${page}`;
-                remote_url += `&type=${type}`;
+            } else if(type && type.includes('phim-moi-cap-nhat')){
+                url = `${NGUONC_API_BASE}/films/${type}?page=${page}`;
             } else {
-                remote_url += `&type=phim-moi-cap-nhat`;
+                if (category){
+                    url += `&category=${category}`;
+                    remote_url += `&category=${category}`;
+                } 
+                if (country){
+                    url += `&country=${country}`;
+                    remote_url += `&country=${country}`;
+                } 
+                if (year){
+                    url += `&year=${year}`;
+                    remote_url += `&year=${year}`;
+                } 
             }
 
-            const response = await axios.get(url);
-            const data = response.data;
-            const items = data.items || [];
-            const paginate = data.paginate || {};
-
+            const { items, pagination: paginate }  = await fetchNguoncList(url);
             res.json({
                 grid_number: 3,
                 enable_detail: true,
